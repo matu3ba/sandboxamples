@@ -1,0 +1,9 @@
+# Git stores internally files as utf8 and with eol lf.
+# Set default behavior to automatically normalize line endings.
+* text eol=lf
+*.c text eol=lf
+*.h text eol=lf
+*.txt text eol=lf
+*.zig text eol=lf
+
+docs/img/** binary
