@@ -21,15 +21,18 @@ Windows
 - [ ] permission limitations of process and subprocess (user based?)
       * Applications must set security limits individually for each process.
       * Permissions also organized into user groups instead of bits
-- [ ] job object system to limit memory, cpu usage and kill process group
-      * https://learn.microsoft.com/en-us/windows/win32/api/jobapi2/
+- [ ] job object system
+  [link](https://learn.microsoft.com/en-us/windows/win32/api/jobapi2/) to limit
+  memory, cpu usage and kill process group
 - [ ] file system sandboxing by user account (might need to remove and readd account)
-      * https://learn.microsoft.com/en-us/windows/win32/api/lmaccess/ns-lmaccess-user_info_1008
+      * [link](https://learn.microsoft.com/en-us/windows/win32/api/lmaccess/ns-lmaccess-user_info_1008)
       * use ACLs + integrity check on startup
 - [ ] network sandboxing?
-      * not usable in Windows Home https://learn.microsoft.com/en-us/windows/win32/netmgmt/user-functions
-      * results indicate that one would need to write your own firewall and run it in kernel mode
-        https://stackoverflow.com/questions/2305375/blocking-all-windows-internet-access-from-a-win32-app
+      * simple solution [not usable in Windows Home since it requires group policy](https://learn.microsoft.com/en-us/windows/win32/netmgmt/user-functions)
+      * results indicate that [one would need to write your own firewall](https://stackoverflow.com/questions/2305375/blocking-all-windows-internet-access-from-a-win32-app)
+        and run it in kernel mode
+      * windows filtering platform (forgot what the API is called)
+      * alternative: glasswire or portmaster
 - [ ] what other persistent state may be accessible?
 - [ ] minimal system setup, solution?
 - [ ] tight system supervision setup, solution?
@@ -44,8 +47,8 @@ Linux
         logic on top, which sounds like what Windows is doing inside Kernel
 - [ ] setuid, lockdown?
 - [ ] cgroups (semantic mismatch, more powerful than job object), less useful: setrlimit
-      * cgroups nice for upper process limit and network sandbox
-        and only solution to process tracking (double fork etc)
+      * cgroups nice for upper process limit and network sandbox and only
+        solution to process tracking (double fork etc)
 - [ ] file system sandboxing by user account
 - [ ] network sandboxing, seccomp
 - [ ] what other persistent state may be accessible?
@@ -53,15 +56,11 @@ Linux
 - [ ] tight system supervision setup, solution?
 - [ ] security shutdown, lockdown?
 
-Windows other than Home for a group policy or write a Windows driver to block a user from internet access.
-That seems very reasonable. https://stackoverflow.com/questions/2305375/blocking-all-windows-internet-access-from-a-win32-app
-MacOS is also great about sandbox-exec being "deprecated"  but offering no alternative.
-
 MacOS
 - [ ] sandbox-exec, look into firefox and chromium sandboxing code
-      https://stackoverflow.com/questions/56703697/how-to-sandbox-third-party-applications-when-sandbox-exec-is-deprecated-now
-      https://www.karltarvas.com/macos-app-sandboxing-via-sandbox-exec.html
-- [ ] https://jmmv.dev/2019/11/wait-for-process-group-darwin.html
+      [stackoverflow question](https://stackoverflow.com/questions/56703697/how-to-sandbox-third-party-applications-when-sandbox-exec-is-deprecated-now)
+      [some overview](https://www.karltarvas.com/macos-app-sandboxing-via-sandbox-exec.html)
+- [ ] how to [wait for process group](https://jmmv.dev/2019/11/wait-for-process-group-darwin.html)
       * kevent NOTE\_TRACK needed
       * orphaned processes still not cleaned up
       * fork bomb unmitigated
@@ -74,6 +73,7 @@ MacOS
 Other BSDs and Unixes
 - [ ] Kernel API sandboxing works likely very similar to other solutions
 - [ ] process API with identical problems
+- [ ] network parts unclear
 - [ ] other parts are highly configuration dependent
 
 ## Less hacky kernel design and usage
