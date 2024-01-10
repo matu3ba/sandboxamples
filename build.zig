@@ -6,10 +6,12 @@ const mem = std.mem;
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
-    const test_step = b.step("test", "Run unit tests");
     const sec = b.createModule(.{ .root_source_file = .{ .path = "sec.zig" } });
 
-    if (builtin.os.tag != .wasi) {
+    if (builtin.os.tag == .wasi) return;
+    const test_step = b.step("test", "Run unit tests");
+
+    {
         const child = b.addExecutable(.{
             .name = "child_explicit_handle_inheritance",
             .root_source_file = .{ .path = "test/win/child_explicit_handle_inheritance.zig" },
@@ -39,5 +41,4 @@ pub fn build(b: *std.Build) void {
             test_step.dependOn(&r_step_ehinherit.step);
         }
     }
-
 }
