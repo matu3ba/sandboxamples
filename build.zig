@@ -36,9 +36,40 @@ pub fn build(b: *std.Build) void {
         r_step_ehinherit.expectExitCode(0);
 
         if (b.host.result.os.tag == .windows) {
-            const step_zmiti = b.step("runehinh", "Run explicit handle inheritance test.");
-            step_zmiti.dependOn(&r_step_ehinherit.step);
+            const step_ehinh = b.step("runehinh", "Run explicit handle inheritance test.");
+            step_ehinh.dependOn(&r_step_ehinherit.step);
             test_step.dependOn(&r_step_ehinherit.step);
+        }
+    }
+
+    {
+        const child = b.addExecutable(.{
+            .name = "child_win32k_mitigation",
+            .root_source_file = .{ .path = "test/win/child_win32k_mitigation.zig" },
+            .optimize = optimize,
+            .target = target,
+        });
+        child.root_module.addImport("sec", sec);
+        b.installArtifact(child);
+
+        const main = b.addExecutable(.{
+            .name = "main_win32k_mitigation",
+            .root_source_file = .{ .path = "test/win/main_win32k_mitigation.zig" },
+            .optimize = optimize,
+            .target = target,
+        });
+        main.root_module.addImport("sec", sec);
+        b.installArtifact(main);
+
+        const r_step_win32kmit = b.addRunArtifact(main);
+        r_step_win32kmit.addArtifactArg(child);
+        r_step_win32kmit.step.dependOn(b.getInstallStep());
+        r_step_win32kmit.expectExitCode(0);
+
+        if (b.host.result.os.tag == .windows) {
+            const step_miti = b.step("runwin32kmit", "Run win32k mitigation test.");
+            step_miti.dependOn(&r_step_win32kmit.step);
+            test_step.dependOn(&r_step_win32kmit.step);
         }
     }
 }

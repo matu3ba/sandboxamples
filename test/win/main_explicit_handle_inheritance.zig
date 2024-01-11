@@ -100,7 +100,7 @@ fn behavior(gpa: std.mem.Allocator) !void {
             },
             else => |term| {
                 std.debug.print("abnormal child exit: {}", .{term});
-                return error.AbnormlChildExit;
+                return error.AbnormalChildExit;
             }
         }
     }
