@@ -1,5 +1,3 @@
-// const mystd = @import("../std.zig");
-// const win = mystd.win;
 const win = @import("../win.zig");
 
 pub extern "kernel32" fn FormatMessageW(dwFlags: win.DWORD, lpSource: ?win.LPVOID, dwMessageId: win.Win32Error, dwLanguageId: win.DWORD, lpBuffer: [*]u16, nSize: win.DWORD, Arguments: ?*win.va_list) callconv(win.WINAPI) win.DWORD;
@@ -48,6 +46,10 @@ pub extern "kernel32" fn CreateProcessW(
 
 
 pub extern "kernel32" fn GetHandleInformation(hObject: win.HANDLE, dwFlags: *win.DWORD) callconv(win.WINAPI) win.BOOL;
+
+pub extern "kernel32" fn CreateJobObjectW(lpJobAttributes: ?*win.SECURITY_ATTRIBUTES, lpName: ?win.LPCWSTR) win.HANDLE;
+pub extern "kernel32" fn IsProcessInJob(ProcessHandle: win.HANDLE, JobHandle: win.HANDLE, Result: *win.BOOL) win.BOOL;
+pub extern "kernel32" fn TerminateJobObject(hJob: win.HANDLE, uExitCode: u32) win.BOOL;
 
 // ====redundant error fix
 pub extern "kernel32" fn LoadLibraryW(lpLibFileName: [*:0]const u16) callconv(win.WINAPI) ?win.HMODULE;

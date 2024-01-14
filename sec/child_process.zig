@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// SPDX-SnippetCopyrightText: Zig contributors
+
 const std = @import("std");
 const win = @import("os/win.zig");
 

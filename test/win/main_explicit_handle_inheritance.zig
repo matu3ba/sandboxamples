@@ -52,7 +52,8 @@ fn behavior(gpa: std.mem.Allocator) !void {
 
         var attrs: winsec.LPPROC_THREAD_ATTRIBUTE_LIST = undefined;
         var attrs_len: winsec.SIZE_T = undefined;
-        // TODO fix this
+
+        // Intentional probing. Alternative is to use ntdll directly.
         try std.testing.expectError(error.InsufficientBuffer, winsec.InitializeProcThreadAttributeList(null, 1, 0, &attrs_len));
         var attrs_buf: []u8 = undefined;
         attrs_buf = try gpa.alloc(u8, attrs_len);

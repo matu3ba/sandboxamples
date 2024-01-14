@@ -1,3 +1,4 @@
+//! Descendent processes intended to be named "evildescendent" for checks.
 const std = @import("std");
 const sec = @import("sec");
 const ossec = sec.os;

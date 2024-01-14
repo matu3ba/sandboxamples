@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// SPDX-SnippetCopyrightText: Zig contributors
+
 const std = @import("std");
 const builtin = @import("builtin");
 const native_arch = builtin.cpu.arch;
@@ -318,20 +321,32 @@ pub const PROC_THREAD_ATTRIBUTE_SECURITY_CAPABILITIES = ProcThreadAttributeValue
 pub const PROC_THREAD_ATTRIBUTE_PROTECTION_LEVEL = ProcThreadAttributeValue(
     @intFromEnum(PROC_THREAD_ATTRIBUTE_NUM.ProcThreadAttributeProtectionLevel), false, true, false
 );
-
-pub const PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE = val: {
-    if (!builtin.target.os.version_range.windows.min.isAtLeast(.win10_rs5))
-        @compileError("Mitigation not available for target");
-    break :val ProcThreadAttributeValue(
-        @intFromEnum(PROC_THREAD_ATTRIBUTE_NUM.ProcThreadAttributePseudoConsole), false, true, false
-    );
-};
+pub const PROC_THREAD_ATTRIBUTE_JOB_LIST = ProcThreadAttributeValue(
+    @intFromEnum(PROC_THREAD_ATTRIBUTE_NUM.ProcThreadAttributeJobList), false, true, false
+);
+pub const PROC_THREAD_ATTRIBUTE_CHILD_PROCESS_POLICY = ProcThreadAttributeValue(
+    @intFromEnum(PROC_THREAD_ATTRIBUTE_NUM.ProcThreadAttributeChildProcessPolicy), false, true, false
+);
+pub const PROC_THREAD_ATTRIBUTE_ALL_APPLICATION_PACKAGES_POLICY = ProcThreadAttributeValue(
+    @intFromEnum(PROC_THREAD_ATTRIBUTE_NUM.ProcThreadAttributeAllApplicationPackagesPolicy), false, true, false
+);
+pub const PROC_THREAD_ATTRIBUTE_WIN32K_FILTER = ProcThreadAttributeValue(
+    @intFromEnum(PROC_THREAD_ATTRIBUTE_NUM.ProcThreadAttributeWin32kFilter), false, true, false
+);
 
 pub const PROC_THREAD_ATTRIBUTE_DESKTOP_APP_POLICY = val: {
     if (!builtin.target.os.version_range.windows.min.isAtLeast(.win10_rs2))
         @compileError("Mitigation not available for target");
     break :val ProcThreadAttributeValue(
         @intFromEnum(PROC_THREAD_ATTRIBUTE_NUM.ProcThreadAttributeDesktopAppPolicy), false, true, false
+    );
+};
+
+pub const PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE = val: {
+    if (!builtin.target.os.version_range.windows.min.isAtLeast(.win10_rs5))
+        @compileError("Mitigation not available for target");
+    break :val ProcThreadAttributeValue(
+        @intFromEnum(PROC_THREAD_ATTRIBUTE_NUM.ProcThreadAttributePseudoConsole), false, true, false
     );
 };
 
@@ -453,6 +468,36 @@ pub fn CreateProcessW(
             // when calling CreateProcessW on a plain text file with a .exe extension
             .EXE_MACHINE_TYPE_MISMATCH,
             => return error.InvalidExe,
+            else => |err| return unexpectedError(err),
+        }
+    }
+}
+
+pub fn CreateJobObject(lpJobAttributes: ?*SECURITY_ATTRIBUTES, lpName: ?LPCWSTR) HANDLE {
+    return kernel32.CreateJobObjectW(lpJobAttributes, lpName);
+}
+
+pub const IsProcessInJobError = error{Unexpected};
+pub fn IsProcessInJob(
+    hProcess: HANDLE,
+    hJob: HANDLE,
+) IsProcessInJobError!bool {
+    var Result: BOOL = undefined;
+    if (kernel32.IsProcessInJob(hProcess, hJob, &Result) == 0) {
+        switch (kernel32.GetLastError()) {
+            else => |err| return unexpectedError(err),
+        }
+    }
+    return Result != 0;
+}
+
+pub const TerminateJobObjectError = error{Unexpected};
+pub fn TerminateJobObject(
+    hJob: HANDLE,
+    uExitCode: u32,
+) TerminateJobObjectError!void {
+    if (kernel32.TerminateJobObject(hJob, uExitCode) == 0) {
+        switch (kernel32.GetLastError()) {
             else => |err| return unexpectedError(err),
         }
     }
