@@ -47,9 +47,15 @@ pub extern "kernel32" fn CreateProcessW(
 
 pub extern "kernel32" fn GetHandleInformation(hObject: win.HANDLE, dwFlags: *win.DWORD) callconv(win.WINAPI) win.BOOL;
 
-pub extern "kernel32" fn CreateJobObjectW(lpJobAttributes: ?*win.SECURITY_ATTRIBUTES, lpName: ?win.LPCWSTR) win.HANDLE;
-pub extern "kernel32" fn IsProcessInJob(ProcessHandle: win.HANDLE, JobHandle: win.HANDLE, Result: *win.BOOL) win.BOOL;
-pub extern "kernel32" fn TerminateJobObject(hJob: win.HANDLE, uExitCode: u32) win.BOOL;
+pub extern "kernel32" fn CreateJobObjectW(lpJobAttributes: ?*win.SECURITY_ATTRIBUTES, lpName: ?win.LPCWSTR) callconv(win.WINAPI) win.HANDLE;
+pub extern "kernel32" fn SetInformationJobObject(
+    hJob: win.HANDLE,
+    jobObjectInformationClass: win.JobObjectInformationClass,
+    lpJobObjectInformation: win.LPVOID,
+    cbJobObjectInformationLength: win.DWORD,
+) callconv(win.WINAPI) win.BOOL;
+pub extern "kernel32" fn IsProcessInJob(ProcessHandle: win.HANDLE, JobHandle: win.HANDLE, Result: *win.BOOL) callconv(win.WINAPI) win.BOOL;
+pub extern "kernel32" fn TerminateJobObject(hJob: win.HANDLE, uExitCode: u32) callconv(win.WINAPI) win.BOOL;
 
 // ====redundant error fix
 pub extern "kernel32" fn LoadLibraryW(lpLibFileName: [*:0]const u16) callconv(win.WINAPI) ?win.HMODULE;

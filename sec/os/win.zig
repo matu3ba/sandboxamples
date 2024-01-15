@@ -30,6 +30,11 @@ pub const SIZE_T = usize;
 pub const WCHAR = u16;
 pub const WORD = u16;
 pub const va_list = *opaque {};
+pub const LARGE_INTEGER = i64;
+pub const ULARGE_INTEGER = u64;
+pub const ULONG = u32;
+pub const LONG = i32;
+pub const ULONGLONG = u64;
 
 pub const SECURITY_ATTRIBUTES = extern struct {
     nLength: DWORD,
@@ -477,7 +482,23 @@ pub fn CreateJobObject(lpJobAttributes: ?*SECURITY_ATTRIBUTES, lpName: ?LPCWSTR)
     return kernel32.CreateJobObjectW(lpJobAttributes, lpName);
 }
 
+pub const SetInformationJobObjectError = error{Unexpected};
+
+pub fn SetInformationJobObject(
+    hJob: HANDLE,
+    jobObjectInformationClass: JobObjectInformationClass,
+    lpJobObjectInformation: LPVOID,
+    cbJobObjectInformationLength: DWORD,
+) SetInformationJobObjectError!void {
+    if (kernel32.SetInformationJobObject(hJob, jobObjectInformationClass, lpJobObjectInformation, cbJobObjectInformationLength) == 0) {
+        switch (kernel32.GetLastError()) {
+            else => |err| return unexpectedError(err),
+        }
+    }
+}
+
 pub const IsProcessInJobError = error{Unexpected};
+
 pub fn IsProcessInJob(
     hProcess: HANDLE,
     hJob: HANDLE,
@@ -488,10 +509,13 @@ pub fn IsProcessInJob(
             else => |err| return unexpectedError(err),
         }
     }
-    return Result != 0;
+        return Result != 0;
 }
 
 pub const TerminateJobObjectError = error{Unexpected};
+
+/// uExitCode should not be greater than 255. As example, the process may
+/// return (AUTODATASEG_EXCEEDS_64k/199) if you use (CANCELLED/1223).
 pub fn TerminateJobObject(
     hJob: HANDLE,
     uExitCode: u32,
@@ -502,3 +526,114 @@ pub fn TerminateJobObject(
         }
     }
 }
+
+pub const JOBOBJECT_BASIC_LIMIT_INFORMATION = extern struct {
+    PerProcessUserTimeLimit: LARGE_INTEGER,
+    PerJobUserTimeLimit: LARGE_INTEGER,
+    LimitFlags: DWORD,
+    MinimumWorkingSetSize: SIZE_T,
+    MaximumWorkingSetSize: SIZE_T,
+    ActiveProcessLimit: DWORD,
+    Affinity: *ULONG,
+    PriorityClass: DWORD,
+    SchedulingClass: DWORD,
+};
+
+pub const IO_COUNTERS = extern struct {
+    ReadOperationCount: ULONGLONG,
+    WriteOperationCount: ULONGLONG,
+    OtherOperationCount: ULONGLONG,
+    ReadTransferCount: ULONGLONG,
+    WriteTransferCount: ULONGLONG,
+    OtherTransferCount: ULONGLONG,
+};
+
+pub const JOBOBJECT_EXTENDED_LIMIT_INFORMATION = extern struct {
+    BasicLimitInformation: JOBOBJECT_BASIC_LIMIT_INFORMATION,
+    IoInfo: IO_COUNTERS,
+    ProcessMemoryLimit: SIZE_T,
+    JobMemoryLimit: SIZE_T,
+    PeakProcessMemoryUsed: SIZE_T,
+    PeakJobMemoryUsed: SIZE_T,
+};
+
+pub const JOB_OBJECT_LIMIT = enum(u32) {
+    // basic limits
+    WORKINGSET = 0x00000001,
+    PROCESS_TIME = 0x00000002,
+    JOB_TIME = 0x00000004,
+    ACTIVE_PROCESS = 0x00000008,
+    AFFINITY = 0x00000010,
+    PRIORITY_CLASS = 0x00000020,
+    PRESERVE_JOB_TIME = 0x00000040,
+    SCHEDULING_CLASS = 0x00000080,
+    // extended limits
+    PROCESS_MEMORY = 0x00000100,
+    JOB_MEMORY = 0x00000200, // alias for JOB_MEMORY_HIGH
+    DIE_ON_UNHANDLED_EXCEPTION = 0x00000400,
+    BREAKAWAY_OK = 0x00000800,
+    SILENT_BREAKAWAY_OK = 0x00001000,
+    KILL_ON_JOB_CLOSE = 0x00002000,
+    SUBSET_AFFINITY = 0x00004000,
+    JOB_MEMORY_LOW = 0x00008000,
+    // notification limits
+    JOB_READ_BYTES = 0x00010000,
+    JOB_WRITE_BYTES = 0x00020000,
+    RATE_CONTROL = 0x00040000, // alias for CPU_RATE_CONTROL
+    IO_RATE_CONTROL = 0x00080000,
+    NET_RATE_CONTROL = 0x00100000,
+    _,
+};
+
+pub const JobObjectInformationClass = enum(u32) {
+    BasicAccountingInformation = 1,
+    BasicLimitInformation = 2,
+    BasicProcessIdList,
+    BasicUIRestrictions,
+    SecurityLimitInformation = 5,  // deprecated
+    EndOfJobTimeInformation,
+    AssociateCompletionPortInformation,
+    BasicAndIoAccountingInformation,
+    ExtendedLimitInformation,
+    JobSetInformation = 10,
+    GroupInformation,
+    NotificationLimitInformation,
+    LimitViolationInformation,
+    GroupInformationEx,
+    CpuRateControlInformation = 15,
+    CompletionFilter,
+    CompletionCounter,
+    FreezeInformation,
+    ExtendedAccountingInformation,
+    WakeInformation = 20,
+    BackgroundInformation,
+    SchedulingRankBiasInformation,
+    TimerVirtualizationInformation,
+    CycleTimeNotification,
+    ClearEvent = 25,
+    InterferenceInformation,
+    ClearPeakJobMemoryUsed,
+    MemoryUsageInformation,
+    SharedCommit,
+    ContainerId = 30,
+    IoRateControlInformation,
+    NetRateControlInformation,
+    NotificationLimitInformation2,
+    LimitViolationInformation2,
+    CreateSilo = 35,
+    SiloBasicInformation,
+    SiloRootDirectory,
+    ServerSiloBasicInformation,
+    ServerSiloUserSharedData,
+    SiloInitialize = 40,
+    ServerSiloRunningState,
+    IoAttribution,
+    MemoryPartitionInformation,
+    ContainerTelemetryId,
+    SiloSystemRoot = 45,
+    EnergyTrackingState,
+    ThreadImpersonationInformation,
+    IoPriorityLimit,
+    PagePriorityLimit = 49,
+    _,
+};

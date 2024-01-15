@@ -8,12 +8,12 @@ int main(int argc, char** argv)
 {
   HANDLE job = CreateJobObject(NULL, NULL);
 
-  // JOBOBJECT_EXTENDED_LIMIT_INFORMATION info = { };
-  // info.BasicLimitInformation.LimitFlags =
-  //                    JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
-  // SetInformationJobObject(hJob,
-  //       JobObjectExtendedLimitInformation,
-  //       &info, sizeof(info));
+  JOBOBJECT_EXTENDED_LIMIT_INFORMATION info = { };
+  info.BasicLimitInformation.LimitFlags =
+                     JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+  SetInformationJobObject(job,
+        JobObjectExtendedLimitInformation,
+        &info, sizeof(info));
 
   SIZE_T size;
   InitializeProcThreadAttributeList(NULL, 1, 0, &size);

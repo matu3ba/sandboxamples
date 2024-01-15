@@ -64,7 +64,7 @@ Linux
 - [ ] cgroups (semantic mismatch, more powerful than job object), 
     - https://www.schutzwerk.com/en/blog/linux-container-cgroups-03-memory-cpu-freezer-dev/
     - https://man7.org/linux/man-pages/man7/cgroups.7.html
-    - not mitigating double fork: setrlimit
+    - not mitigating double fork: setrlimit (`RLIMIT_CPU` with SIGKILL or child process must handle it)
     - cgroups nice for upper process limit and network sandbox and only
       solution to process tracking (double fork etc)
 - [ ] file system sandboxing by user account

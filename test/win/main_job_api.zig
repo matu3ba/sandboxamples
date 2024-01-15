@@ -61,8 +61,20 @@ fn behavior(gpa: std.mem.Allocator) !void {
     _ = it.next() orelse unreachable; // skip binary name
     const child_path = it.next() orelse @panic("missing child path");
 
-    const jo = winsec.CreateJobObject(null, null);
-    defer std.os.close(jo);
+    // create job object and set information
+    const h_jo = winsec.CreateJobObject(null, null);
+    defer std.os.close(h_jo);
+    var jo_eli = std.mem.zeroes(winsec.JOBOBJECT_EXTENDED_LIMIT_INFORMATION);
+    jo_eli.BasicLimitInformation.LimitFlags =
+        @intFromEnum(winsec.JOB_OBJECT_LIMIT.KILL_ON_JOB_CLOSE)
+        | @intFromEnum(winsec.JOB_OBJECT_LIMIT.JOB_MEMORY)
+        | @intFromEnum(winsec.JOB_OBJECT_LIMIT.ACTIVE_PROCESS)
+        | @intFromEnum(winsec.JOB_OBJECT_LIMIT.JOB_TIME);
+    jo_eli.JobMemoryLimit = 20_971_520; // [B] => 20 MB = 20 * (1024)^2 B = 20 * 1_048_576 = 20_971_520 B
+    jo_eli.BasicLimitInformation.ActiveProcessLimit = 32;
+    jo_eli.BasicLimitInformation.PerJobUserTimeLimit = 1_000 * 1_000 * 10; // 1s = 1_000 * 1_000 * 10 * 100ns
+    try winsec.SetInformationJobObject(h_jo, winsec.JobObjectInformationClass.ExtendedLimitInformation, &jo_eli, @sizeOf(@TypeOf(jo_eli)));
+
     var attrs: winsec.LPPROC_THREAD_ATTRIBUTE_LIST = undefined;
     var attrs_len: winsec.SIZE_T = undefined;
 
@@ -80,8 +92,8 @@ fn behavior(gpa: std.mem.Allocator) !void {
         0,
         // ProcThreadAttributeJobList
         winsec.PROC_THREAD_ATTRIBUTE_JOB_LIST,
-        @as(*anyopaque, @ptrCast(@constCast(&jo))),
-        @sizeOf(@TypeOf(jo)),
+        @as(*anyopaque, @ptrCast(@constCast(&h_jo))),
+        @sizeOf(@TypeOf(h_jo)),
         null,
         null,
     );
@@ -99,10 +111,10 @@ fn behavior(gpa: std.mem.Allocator) !void {
 
     { // alive subprocesses block
         try child.spawn();
-        const isproc_injob = try winsec.IsProcessInJob(child.id, jo);
+        const isproc_injob = try winsec.IsProcessInJob(child.id, h_jo);
         try std.testing.expectEqual(isproc_injob, true);
         // kill descendant processes in all cases
-        defer winsec.TerminateJobObject(jo, expected_exit_code) catch {}; // does this error code make sense?
+        defer winsec.TerminateJobObject(h_jo, expected_exit_code) catch {}; // does this error code make sense?
 
         // some work, supervision, forward debugging etc
     }
