@@ -514,7 +514,7 @@ pub fn IsProcessInJob(
 
 pub const TerminateJobObjectError = error{Unexpected};
 
-/// uExitCode should not be greater than 255. As example, the process may
+/// uExitCode should be smaller than than 1223. As example, the process may
 /// return (AUTODATASEG_EXCEEDS_64k/199) if you use (CANCELLED/1223).
 pub fn TerminateJobObject(
     hJob: HANDLE,
@@ -522,6 +522,79 @@ pub fn TerminateJobObject(
 ) TerminateJobObjectError!void {
     if (kernel32.TerminateJobObject(hJob, uExitCode) == 0) {
         switch (kernel32.GetLastError()) {
+            else => |err| return unexpectedError(err),
+        }
+    }
+}
+
+// zig fmt: off
+pub const PROCESS_ACCESS_RIGHTS = enum(u32) {
+    TERMINATE =                 0x0001,
+    CREATE_THREAD =             0x0002,
+    SET_SESSIONID =             0x0004,
+    VM_OPERATION =              0x0008,
+    VM_READ =                   0x0010,
+    VM_WRITE =                  0x0020,
+    DUP_HANDLE =                0x0040,
+    CREATE_PROCESS =            0x0080,
+    SET_QUOTA =                 0x0100,
+    SET_INFORMATION =           0x0200,
+    QUERY_INFORMATION =         0x0400,
+    SUSPEND_RESUME =            0x0800,
+    QUERY_LIMITED_INFORMATION = 0x1000,
+    SET_LIMITED_INFORMATION =   0x2000,
+};
+// zig fmt: on
+
+
+pub const OpenProcessError = error{
+    AccessDenied,
+    Unexpected,
+};
+
+/// dwDesiredAccess uses PROCESS_ACCESS_RIGHTS
+pub fn OpenProcess(dwDesiredAccess: DWORD, bInheritHandle: bool, dwProcessId: DWORD) OpenProcessError!HANDLE {
+    const res = kernel32.OpenProcess(dwDesiredAccess, @intFromBool(bInheritHandle), dwProcessId);
+    if (res == null) {
+        switch (kernel32.GetLastError()) {
+            .ACCESS_DENIED => return error.AccessDenied,
+            .NOACCESS => return error.AccessDenied,
+            else => |err| return unexpectedError(err),
+        }
+    }
+    return res.?;
+}
+
+
+pub const EnumProcessModulesError = error{Unexpected};
+
+pub fn EnumProcessModules(hProcess: HANDLE, lphModule: *HMODULE, cb: DWORD, lpcbNeeded: *DWORD) EnumProcessModulesError!void {
+    if (kernel32.K32EnumProcessModules(hProcess, lphModule, cb, lpcbNeeded) == 0) {
+        switch (kernel32.GetLastError()) {
+            else => |err| return unexpectedError(err),
+        }
+    }
+}
+
+pub const EnumProcessesError = error{Unexpected};
+
+pub fn EnumProcesses(lpidProcess: [*]DWORD, cb: DWORD, lpcbNeeded: *DWORD) EnumProcessesError!void {
+    if (kernel32.K32EnumProcesses(lpidProcess, cb, lpcbNeeded) == 0) {
+        switch (kernel32.GetLastError()) {
+            else => |err| return unexpectedError(err),
+        }
+    }
+}
+
+pub const GetModuleBaseNameError = error{
+    AccessDenied,
+    Unexpected,
+};
+
+pub fn GetModuleBaseName(hProcess: HANDLE, hModule: ?HMODULE, lpBaseName: LPWSTR, nSize: DWORD) GetModuleBaseNameError!void {
+    if (kernel32.K32GetModuleBaseNameW(hProcess, hModule, lpBaseName, nSize) == 0) {
+        switch (kernel32.GetLastError()) {
+            .NOACCESS => return error.AccessDenied,
             else => |err| return unexpectedError(err),
         }
     }

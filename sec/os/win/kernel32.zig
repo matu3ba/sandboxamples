@@ -57,6 +57,12 @@ pub extern "kernel32" fn SetInformationJobObject(
 pub extern "kernel32" fn IsProcessInJob(ProcessHandle: win.HANDLE, JobHandle: win.HANDLE, Result: *win.BOOL) callconv(win.WINAPI) win.BOOL;
 pub extern "kernel32" fn TerminateJobObject(hJob: win.HANDLE, uExitCode: u32) callconv(win.WINAPI) win.BOOL;
 
-// ====redundant error fix
+// ====checks
+pub extern "kernel32" fn OpenProcess(dwDesiredAccess: win.DWORD, bInheritHandle: win.BOOL, dwProcessId: win.DWORD) callconv(win.WINAPI) ?win.HANDLE;
+pub extern "kernel32" fn K32EnumProcessModules(hProcess: win.HANDLE, lphModule: *win.HMODULE, cb: win.DWORD, lpcbNeeded: *win.DWORD) callconv(win.WINAPI) win.BOOL;
+pub extern "kernel32" fn K32EnumProcesses(lpidProcess: [*]win.DWORD, cb: win.DWORD, lpcbNeeded: *win.DWORD) callconv(win.WINAPI) win.BOOL;
+pub extern "kernel32" fn K32GetModuleBaseNameW(hProcess: win.HANDLE, hModule: ?win.HMODULE, lpBaseName: win.LPWSTR, nSize: win.DWORD) callconv(win.WINAPI) win.BOOL;
+
+// ====fixups
 pub extern "kernel32" fn LoadLibraryW(lpLibFileName: [*:0]const u16) callconv(win.WINAPI) ?win.HMODULE;
 pub extern "kernel32" fn FreeLibrary(hModule: win.HMODULE) callconv(win.WINAPI) win.BOOL;

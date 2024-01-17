@@ -20,7 +20,6 @@
 
 // TODO
 // - replace use cases of FreeMemoryJobObject
-// - checkNoProcessHasPrefix
 // - atomic guarantees of Windows regarding system process overview?
 // - trace process spawn via etw?
 
@@ -39,21 +38,53 @@ pub fn main() !void {
     try behavior(gpa);
 }
 
-// This check may be racy, because Windows does not document that accesses to
-// process information is automic.
-// fn checkNoProcessHasPrefix(pid: u32) !void {
-//     var path_buf: [std.win.fs.MAX_PATH]u8 = undefined;
-//     var h_proc: *anyopaque = winsec.OpenProcess(
-//         winsec.PROCESS_QUERY_INFORMATION | winsec.PROCESS_VM_READ,
-//         false,
-//         pid,
-//     );
-//     var h_mod: winsec.H
-//     if (null != h_proc) {
-//         EnumProcessModules(h_proc, &hmod
-//
-//     }
-// }
+// This check may be racy. Windows does not document that accesses to process
+// information is automic.
+fn hasProcessPrefix(pid: u32, prefix: []const u16) !bool {
+    var win_path_buf: [*:0]winsec.WCHAR = undefined;
+    const h_proc: winsec.HANDLE = winsec.OpenProcess(
+        @intFromEnum(winsec.PROCESS_ACCESS_RIGHTS.QUERY_INFORMATION)
+        | @intFromEnum(winsec.PROCESS_ACCESS_RIGHTS.VM_READ),
+        false,
+        pid,
+    ) catch |err| switch(err) {
+        error.AccessDenied => return false,
+        else => return true,
+    };
+    defer std.os.close(h_proc);
+    var h_mod: winsec.HMODULE = undefined;
+    var cbNeeded: winsec.DWORD = undefined;
+
+    try winsec.EnumProcessModules(h_proc, &h_mod, @sizeOf(@TypeOf(h_mod)), &cbNeeded);
+    winsec.GetModuleBaseName(h_proc, h_mod, win_path_buf[0..], @sizeOf(@TypeOf(win_path_buf))/@sizeOf(winsec.WCHAR)) catch |err| switch (err) {
+        error.AccessDenied => return false,
+        else => return true,
+    };
+    if (std.mem.startsWith(u16, std.mem.span(win_path_buf), prefix)) return true;
+    return false;
+}
+
+fn hasAnyProcessPrefix(prefix: []const u16) bool {
+    var aProcesses: [1024]winsec.DWORD = undefined;
+    var cbNeeded: winsec.DWORD = undefined;
+    var cProcesses: winsec.DWORD = undefined;
+    winsec.EnumProcesses(aProcesses[0..], @sizeOf(@TypeOf(aProcesses)), &cbNeeded) catch |err| {
+        std.debug.print("could not list processes, err: {}\n",.{err});
+        return true;
+    };
+    cProcesses = cbNeeded / @sizeOf(winsec.DWORD);
+    var proc_i: u32 = 0;
+    while (proc_i < cProcesses) : (proc_i += 1) {
+        if (aProcesses[proc_i] != 0) {
+            const has_prefix = hasProcessPrefix(aProcesses[proc_i], prefix) catch |err| {
+                std.debug.print("hasProcessPrefix err: {}\n", .{ err });
+                return true;
+            };
+            if (has_prefix) return true;
+        }
+    }
+    return false;
+}
 
 fn behavior(gpa: std.mem.Allocator) !void {
     var it = try std.process.argsWithAllocator(gpa);
@@ -120,7 +151,9 @@ fn behavior(gpa: std.mem.Allocator) !void {
     }
 
     // no surviving processes must exist (bindings exhaustive work, so defer it)
-    // try checkNoProcessHasPrefix("evildescendent");
+    const L = std.unicode.utf8ToUtf16LeStringLiteral;
+    const has_prefix = hasAnyProcessPrefix(L("evildescendent"));
+    if (has_prefix) return error.ProcessHasUnwantedPrefix;
 
     const wait_res = try child.wait();
     switch (wait_res) {

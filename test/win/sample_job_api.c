@@ -2,13 +2,13 @@
 #include <Windows.h>
 #include <assert.h>
 // TODO macro check for utf-16
-// TODO JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
 
 int main(int argc, char** argv)
 {
   HANDLE job = CreateJobObject(NULL, NULL);
 
-  JOBOBJECT_EXTENDED_LIMIT_INFORMATION info = { };
+  JOBOBJECT_EXTENDED_LIMIT_INFORMATION info = {};
+  memset(&info, 0, sizeof(info));
   info.BasicLimitInformation.LimitFlags =
                      JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
   SetInformationJobObject(job,

@@ -32,7 +32,11 @@ fn behavior(gpa: std.mem.Allocator) !void {
         child.stdout_behavior = .Inherit;
         child.stderr_behavior = .Inherit;
 
-        // TODO finish up
+        try child.spawn();
+    }
+
+    while (true) {
+        std.time.sleep(1_000_000); // 1ms
     }
 
     // switch (number) {

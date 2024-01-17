@@ -21,15 +21,14 @@ Windows
 - [ ] permission limitations of process and subprocess (user based?)
     - Applications must set security limits individually for each process.
     - Permissions also organized into user groups instead of bits
-- [ ] job object system
+- [x] job object system
   [link](https://learn.microsoft.com/en-us/windows/win32/api/jobapi2/) to limit
   memory, cpu usage and kill process group
     - use advanced api https://devblogs.microsoft.com/oldnewthing/20230209-00/?p=107812
     - use cases https://www.meziantou.net/killing-all-child-processes-when-the-parent-exits-job-object.htm
     - [x] basic
-    - [ ] `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE, JOBOBJECT_EXTENDED_LIMIT_INFORMATION, SetInformationJobObject`
-    - [ ] `enumerate_processes`
-    - [ ] basic attacks (escape job unit via higher api and flags in CreateProcess etc)
+    - [x] `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE, JOBOBJECT_EXTENDED_LIMIT_INFORMATION, SetInformationJobObject`
+    - [x] Enumerate process names on system
 - [ ] file system sandboxing by user account (might need to remove and readd account)
       - ignore for now and always use explicit paths for PATH and alike.
       - use ntdll calls eventually, because we already have those in Zig libstd
@@ -52,6 +51,11 @@ Windows
 - [ ] security shutdown
       - [regular shutdown only](https://learn.microsoft.com/en-us/windows/win32/shutdown/how-to-shut-down-the-system)
       - [shutdown reasons](https://learn.microsoft.com/en-us/windows/win32/shutdown/system-shutdown-reason-codes)
+- [ ] basic attacks
+      - escape job unit via higher api
+      - escape job unit via flags in CreateProcess
+      - access and adjust job unit
+- [ ] simple privilege dropping program for untrusted input
 
 Linux
 - [ ] seccomp
