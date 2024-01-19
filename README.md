@@ -18,9 +18,6 @@
 Windows
 - [x] win32k mitigation + others
 - [x] explicit handle inheritance
-- [ ] permission limitations of process and subprocess (user based?)
-    - Applications must set security limits individually for each process.
-    - Permissions also organized into user groups instead of bits
 - [x] job object system
   [link](https://learn.microsoft.com/en-us/windows/win32/api/jobapi2/) to limit
   memory, cpu usage and kill process group
@@ -33,12 +30,17 @@ Windows
       - ignore for now and always use explicit paths for PATH and alike.
       - use ntdll calls eventually, because we already have those in Zig libstd
       - NetUserAdd, NetUserGetInfo, and NetUserSetInfo; GetFileAttributesExW
-      - https://learn.microsoft.com/en-us/windows/win32/api/aclapi/nf-aclapi-getnamedsecurityinfow
-      - https://learn.microsoft.com/en-us/windows/win32/api/securitybaseapi/nf-securitybaseapi-accesscheck
-      - https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getfileattributesexw
-    - [ ] ACLs
+      - GetNamedSecurityInfoW, SetNamedSecurityInfoW
+      - AccessCheck, "Verifying Client Access with ACLs in C++"
+      - GetFileAttributesExW
+    - [ ] ACLs https://learn.microsoft.com/en-us/windows/win32/secauthz/access-control-lists
     - [ ] fetch | execution time separation via different users
     - [ ] sample integrity checks on startups
+    - [ ] impersonation https://learn.microsoft.com/en-us/windows/win32/cossdk/client-impersonation-and-delegation
+    - [ ] access overview https://learn.microsoft.com/en-us/windows/security/identity-protection/access-control/access-control
+- [ ] permission limitations of process and subprocess (user based?)
+    - Applications must set security limits individually for each process.
+    - Permissions also organized into user groups instead of bits
 - [ ] network sandboxing?
     - simple solution [not usable in Windows Home since it requires group policy](https://learn.microsoft.com/en-us/windows/win32/netmgmt/user-functions)
     - results indicate that [one would need to write your own firewall](https://stackoverflow.com/questions/2305375/blocking-all-windows-internet-access-from-a-win32-app)
@@ -65,7 +67,7 @@ Linux
       which are inherited is not guaranteed to be stable and may vary during
       process lifetime
 - [ ] setuid, lockdown?
-- [ ] cgroups (semantic mismatch, more powerful than job object), 
+- [ ] cgroups (semantic mismatch, more powerful than job object),
     - https://www.schutzwerk.com/en/blog/linux-container-cgroups-03-memory-cpu-freezer-dev/
     - https://man7.org/linux/man-pages/man7/cgroups.7.html
     - not mitigating double fork: setrlimit (`RLIMIT_CPU` with SIGKILL or child process must handle it)
