@@ -57,6 +57,16 @@ pub extern "kernel32" fn SetInformationJobObject(
 pub extern "kernel32" fn IsProcessInJob(ProcessHandle: win.HANDLE, JobHandle: win.HANDLE, Result: *win.BOOL) callconv(win.WINAPI) win.BOOL;
 pub extern "kernel32" fn TerminateJobObject(hJob: win.HANDLE, uExitCode: u32) callconv(win.WINAPI) win.BOOL;
 
+pub extern "kernel32" fn GetCurrentProcess() callconv(win.WINAPI) win.HANDLE;
+pub extern "kernel32" fn OpenProcessToken(proc_h: win.HANDLE, want_access: u32, token_h: *win.HANDLE) callconv(win.WINAPI) win.BOOL;
+pub extern "kernel32" fn GetTokenInformation(
+    token_h: win.HANDLE,
+    token_info_ty: win.TokenInfo,
+    token_info: ?win.LPVOID,
+    token_info_len: win.DWORD,
+    used_token_info_len: *win.DWORD
+) callconv(win.WINAPI) win.BOOL;
+
 // ====checks
 pub extern "kernel32" fn OpenProcess(dwDesiredAccess: win.DWORD, bInheritHandle: win.BOOL, dwProcessId: win.DWORD) callconv(win.WINAPI) ?win.HANDLE;
 pub extern "kernel32" fn K32EnumProcessModules(hProcess: win.HANDLE, lphModule: *win.HMODULE, cb: win.DWORD, lpcbNeeded: *win.DWORD) callconv(win.WINAPI) win.BOOL;
@@ -66,3 +76,15 @@ pub extern "kernel32" fn K32GetModuleBaseNameW(hProcess: win.HANDLE, hModule: ?w
 // ====fixups
 pub extern "kernel32" fn LoadLibraryW(lpLibFileName: [*:0]const u16) callconv(win.WINAPI) ?win.HMODULE;
 pub extern "kernel32" fn FreeLibrary(hModule: win.HMODULE) callconv(win.WINAPI) win.BOOL;
+
+// ====security
+pub extern "kernel32" fn GetSecurityInfo(
+    handle: win.HANDLE,
+    object_ty: win.SE_OBJECT_TYPE,
+    sec_info_select: win.SE_OBJECT_TYPE,
+    ppsidOwner: ?win.PSID,
+    ppsidGroup: ?win.PSID,
+    ppDacl: ?*win.ACL,
+    ppSacl: ?*win.ACL,
+    ppSecurityDescriptor: ?win.PSECURITY_DESCRIPTOR,
+) callconv(win.WINAPI) win.BOOL;

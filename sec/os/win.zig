@@ -35,6 +35,8 @@ pub const ULARGE_INTEGER = u64;
 pub const ULONG = u32;
 pub const LONG = i32;
 pub const ULONGLONG = u64;
+pub const PSID = *opaque {};
+pub const PSECURITY_DESCRIPTOR = *opaque {};
 
 pub const SECURITY_ATTRIBUTES = extern struct {
     nLength: DWORD,
@@ -710,3 +712,209 @@ pub const JobObjectInformationClass = enum(u32) {
     PagePriorityLimit = 49,
     _,
 };
+
+/// Returns pseudo-handle to current process. No need to close this handle.
+pub fn GetCurrentProcess() HANDLE {
+    return kernel32.GetCurrentProcess();
+}
+
+// zig fmt: off
+pub const TOKEN_ACCESS = enum(u32) {
+    ASSIGN_PRIMARY    = 0x00000001,
+    DUPLICATE         = 0x00000002,
+    IMPERSONATE       = 0x00000004,
+    QUERY             = 0x00000008,
+    QUERY_SOURCE      = 0x00000010,
+    ADJUST_PRIVILEGES = 0x00000020,
+    ADJUST_GROUPS     = 0x00000040,
+    ADJUST_DEFAULT    = 0x00000080,
+    ADJUST_SESSIONID  = 0x00000100,
+    // <gap>
+    DELETE            = 0x00010000,
+    READ_CONTROL      = 0x00020000,
+    WRITE_DAC         = 0x00040000,
+    WRITE_OWNER       = 0x00080000,
+    SYNCHRONIZE       = 0x00100000,
+    // <gap>
+    SYSTEM_SECURITY   = 0x01000000,
+    MAXIMUM_ALLOWED   = 0x02000000,
+    // <gap>
+    GENERIC_ALL       = 0x10000000,
+    GENERIC_EXECUTE   = 0x20000000,
+    GENERIC_WRITE     = 0x40000000,
+    GENERIC_READ      = 0x80000000,
+};
+// zig fmt: on
+
+pub const OpenProcessTokenError = error { Unexpected };
+
+pub fn OpenProcessToken(proc_h: HANDLE, want_access: u32) OpenProcessTokenError!HANDLE {
+    var token_h: HANDLE = undefined;
+    if (kernel32.OpenProcessToken(proc_h, want_access, &token_h) == 0) {
+        switch (kernel32.GetLastError()) {
+            else => |err| return unexpectedError(err),
+        }
+    }
+    return token_h;
+}
+
+// TOKEN_INFORMATION_CLASS
+pub const TokenInfo = enum(c_uint) {
+    User = 1,
+    Groups,
+    Privileges,
+    Owner,
+    PrimaryGroup,
+    DefaultDacl,
+    Source,
+    Type,
+    ImpersonationLevel,
+    Statistics,
+    RestrictedSids,
+    SessionId,
+    GroupsAndPrivileges,
+    SessionReference,
+    SandBoxInert,
+    AuditPolicy,
+    Origin,
+    ElevationType,
+    LinkedToken,
+    Elevation,
+    HasRestrictions,
+    AccessInformation,
+    VirtualizationAllowed,
+    VirtualizationEnabled,
+    IntegrityLevel,
+    UIAccess,
+    MandatoryPolicy,
+    LogonSid,
+    IsAppContainer,
+    Capabilities,
+    AppContainerSid,
+    AppContainerNumber,
+    UserClaimAttributes,
+    DeviceClaimAttributes,
+    RestrictedUserClaimAttributes,
+    RestrictedDeviceClaimAttributes,
+    DeviceGroups,
+    RestrictedDeviceGroups,
+    SecurityAttributes,
+    IsRestricted,
+    ProcessTrustLevel,
+    PrivateNameSpace,
+    SingletonAttributes,
+    BnoIsolation,
+    ChildProcessFlags,
+    IsLessPrivilegedAppContainer,
+    IsSandboxed,
+    OriginatingProcessTrustLevel,
+};
+
+pub const GetTokenInformationError = error { Unexpected };
+
+// TODO can we omit used_token_info_len and only return token_info?
+pub fn GetTokenInformation(
+    token_h: HANDLE,
+    token_info_ty: TokenInfo,
+    token_info: ?LPVOID,
+    token_info_len: DWORD,
+) GetTokenInformationError!DWORD {
+    var used_token_info_len: DWORD = undefined;
+    if (kernel32.GetTokenInformation(
+            token_h,
+            token_info_ty,
+            token_info,
+            token_info_len,
+            &used_token_info_len,
+    ) == 0) {
+        switch (kernel32.GetLastError()) {
+            else => |err| return unexpectedError(err),
+        }
+    }
+    return used_token_info_len;
+}
+
+pub const TOKEN_ELEVATION = extern struct {
+    TokenIsElevated: DWORD,
+};
+
+
+pub const SE_OBJECT_TYPE = enum(c_int) {
+  UNKNOWN_OBJECT_TYPE,
+  FILE_OBJECT,
+  SERVICE,
+  PRINTER,
+  REGISTRY_KEY,
+  LMSHARE,
+  KERNEL_OBJECT,
+  WINDOW_OBJECT,
+  DS_OBJECT,
+  DS_OBJECT_ALL,
+  PROVIDER_DEFINED_OBJECT,
+  WMIGUID_OBJECT,
+  REGISTRY_WOW64_32KEY,
+  REGISTRY_WOW64_64KEY,
+};
+
+// zig fmt: off
+pub const SECURITY_INFORMATION = enum(u32) {
+    OWNER               =  0x00000001,
+    GROUP               =  0x00000002,
+    DACL                =  0x00000004,
+    SACL                =  0x00000008,
+    LABEL               =  0x00000010,
+    ATTRIBUTE           =  0x00000020,
+    SCOPE               =  0x00000040,
+    PROCESS_TRUST_LABEL =  0x00000080,
+    ACCESS_FILTER       =  0x00000100,
+    // <gap>
+    BACKUP              =  0x00010000,
+    // <gap>
+    UNPROTECTED_SACL    =  0x10000000,
+    UNPROTECTED_DACL    =  0x20000000,
+    PROTECTED_SACL      =  0x40000000,
+    PROTECTED_DACL      =  0x80000000,
+    _,
+};
+// zig fmt: on
+
+pub const ACL = extern struct {
+    AclRevision: BYTE,
+    Sbz1: BYTE,
+    AclSize: WORD,
+    AceCount: WORD,
+    Sbz2: WORD,
+};
+
+pub const SecurityInfo = struct {
+    ppsidOwner: ?PSID,
+    ppsidGroup: ?PSID,
+    ppDacl: ?*ACL,
+    ppSacl: ?*ACL,
+    ppSecurityDescriptor: ?PSECURITY_DESCRIPTOR,
+};
+
+pub const GetSecurityInfoError = error { Unexpected };
+
+pub fn GetSecurityInfo(
+    handle: HANDLE,
+    object_ty: SE_OBJECT_TYPE,
+    sec_info_select: SECURITY_INFORMATION,
+) GetSecurityInfoError!SecurityInfo {
+    var sec_info: SecurityInfo = undefined;
+    if (kernel32.GetSecurityInfo(
+        handle,
+        object_ty,
+        sec_info_select,
+        &sec_info.ppsidOwner,
+        &sec_info.ppsidGroup,
+        &sec_info.ppDacl,
+        &sec_info.ppSacl,
+        &sec_info.ppSecurityDescriptor,
+    ) == 0) {
+        switch (kernel32.GetLastError()) {
+            else => |err| return unexpectedError(err),
+        }
+    }
+    return sec_info;
+}

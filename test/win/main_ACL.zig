@@ -6,6 +6,7 @@
 // https://learn.microsoft.com/en-us/windows/win32/secauthz/access-control-lists
 // https://learn.microsoft.com/en-us/archive/msdn-magazine/2008/november/access-control-understanding-windows-file-and-registry-permissions
 // https://learn.microsoft.com/de-de/windows/win32/api/ntsecapi/nf-ntsecapi-lsaopenpolicy?redirectedfrom=MSDN
+// https://learn.microsoft.com/de-de/windows/win32/secauthz/searching-for-a-sid-in-an-access-token-in-c--
 
 // ci: run the same frmo elevated permissions, admin user and non-admin user
 //     and provide context as cli flag
@@ -27,13 +28,15 @@ pub fn main() !void {
 }
 
 fn isProcessElevated() !bool {
-    var h_token: winsec.HANDLE = undefined;
-    try winsec.OpenProcessToken(winsec.GetCurrentProcess(), winsec.TOKEN.QUERY, &h_token);
+    const TA = winsec.TOKEN_ACCESS;
+    const h_token = try winsec.OpenProcessToken(winsec.GetCurrentProcess(), @intFromEnum(TA.QUERY));
     defer std.os.close(h_token);
     var elevation: winsec.TOKEN_ELEVATION = undefined;
-    var cb_size = @sizeOf(winsec.TOKEN_ELEVATION);
+    const expected_size = @sizeOf(winsec.TOKEN_ELEVATION);
 
-    try winsec.GetTokenInformation(h_token, winsec.TokenElevation, &elevation, winsec.TOKEN_ELEVATION, &cb_size);
+    const TI = winsec.TokenInfo;
+    const size = try winsec.GetTokenInformation(h_token, TI.Elevation, &elevation, expected_size);
+    try std.testing.expectEqual(size, expected_size);
     return elevation.TokenIsElevated != 0;
 }
 
@@ -52,8 +55,8 @@ fn behavior(gpa: std.mem.Allocator) !void {
     // Caller_context may be 1. privileged, 2. user 1, user 2 with
     // privilege level admin. Leave ut system for now.
     const caller_context_cli = it.next() orelse @panic("missing caller context to test expected behavior");
-    const child_path = it.next() orelse @panic("missing child path");
-    _ = child_path;
+    // const child_path = it.next() orelse @panic("missing child path");
+    // _ = child_path;
 
     // Permissions can only be given on spawning process, not afterwards.
     const is_process_elevated = try isProcessElevated();
@@ -81,7 +84,37 @@ fn behavior(gpa: std.mem.Allocator) !void {
     // - 3. drop privileges in the child process and try adding files or
     // deleting files of that disallowed path and an allowed one
 
+    const tmpDir = std.testing.tmpDir;
+    var tmp = tmpDir(.{});
+    defer tmp.cleanup();
+    // const file_system_h: ?std.fs.File.Handle = null;
+    // var file_admin_h: ?std.fs.File.Handle = null;
+    var file_user_h: ?std.fs.File.Handle = null;
 
+    // TODO check if we are user system, admin or user account
+
+    // const file_sys = try tmp.dir.createFile("file_sys", .{ .read = true });
+    // const file_admin = try tmp.dir.createFile("file_admin", .{ .read = true });
+    const file_user = try tmp.dir.createFile("file_user", .{ .read = true });
+    // defer file_sys.close();
+    // defer file_admin.close();
+    defer file_user.close();
+    // file_system_h = file_sys.handle;
+    // file_admin_h = file_admin.handle;
+    file_user_h = file_user.handle;
+
+    // const sec_info = try winsec.GetSecurityInfo(
+    //     file_user_h.?,
+    //     winsec.SE_OBJECT_TYPE.FILE_OBJECT,
+    //     winsec.SECURITY_INFORMATION.DACL,
+    // );
+    // _ = sec_info;
+    //
+    // GetExplicitEntriesFromAcl
+    // Major footgun on setting security permissions.
+    // https://stackoverflow.com/questions/35227184/what-is-the-counterpart-to-the-getexplicitentriesfromacl-win32-api-function
+    // yes, its that simple.
+    // https://learn.microsoft.com/en-us/windows/win32/api/aclapi/nf-aclapi-geteffectiverightsfromacla
 
     // create job object and set information
     // const h_jo = winsec.CreateJobObject(null, null);

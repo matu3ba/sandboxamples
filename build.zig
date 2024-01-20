@@ -92,15 +92,47 @@ pub fn build(b: *std.Build) void {
         main.root_module.addImport("sec", sec);
         b.installArtifact(main);
 
-        const r_step_win32kmit = b.addRunArtifact(main);
-        r_step_win32kmit.addArtifactArg(child);
-        r_step_win32kmit.step.dependOn(b.getInstallStep());
-        r_step_win32kmit.expectExitCode(0);
+        const r_step_jobapi = b.addRunArtifact(main);
+        r_step_jobapi.addArtifactArg(child);
+        r_step_jobapi.step.dependOn(b.getInstallStep());
+        r_step_jobapi.expectExitCode(0);
 
         if (b.host.result.os.tag == .windows) {
             const step_miti = b.step("runwinjobapi", "Run win job api test.");
-            step_miti.dependOn(&r_step_win32kmit.step);
-            test_step.dependOn(&r_step_win32kmit.step);
+            step_miti.dependOn(&r_step_jobapi.step);
+            test_step.dependOn(&r_step_jobapi.step);
+        }
+    }
+
+    {
+        // const child = b.addExecutable(.{
+        //     .name = "child_acl",
+        //     .root_source_file = .{ .path = "test/win/child_DCAL.zig" },
+        //     .optimize = optimize,
+        //     .target = target,
+        // });
+        // child.root_module.addImport("sec", sec);
+        // b.installArtifact(child);
+
+        const main = b.addExecutable(.{
+            .name = "main_acl",
+            .root_source_file = .{ .path = "test/win/main_ACL.zig" },
+            .optimize = optimize,
+            .target = target,
+        });
+        main.root_module.addImport("sec", sec);
+        b.installArtifact(main);
+
+        const r_step_win_acl = b.addRunArtifact(main);
+        r_step_win_acl.addArg("standard");
+        // r_step_win_acl.addArtifactArg(child);
+        r_step_win_acl.step.dependOn(b.getInstallStep());
+        r_step_win_acl.expectExitCode(0);
+
+        if (b.host.result.os.tag == .windows) {
+            const step_miti = b.step("runwinacl", "Run win acl test.");
+            step_miti.dependOn(&r_step_win_acl.step);
+            test_step.dependOn(&r_step_win_acl.step);
         }
     }
 }
