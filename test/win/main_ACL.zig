@@ -7,6 +7,9 @@
 // https://learn.microsoft.com/en-us/archive/msdn-magazine/2008/november/access-control-understanding-windows-file-and-registry-permissions
 // https://learn.microsoft.com/de-de/windows/win32/api/ntsecapi/nf-ntsecapi-lsaopenpolicy?redirectedfrom=MSDN
 // https://learn.microsoft.com/de-de/windows/win32/secauthz/searching-for-a-sid-in-an-access-token-in-c--
+// https://stackoverflow.com/questions/3670984/gettokeninformation-first-call-what-for
+// https://stackoverflow.com/questions/73303801/check-if-a-different-process-is-running-with-elevated-privileges
+// https://learn.microsoft.com/en-us/windows/win32/secauthz/finding-the-owner-of-a-file-object-in-c--
 
 // ci: run the same frmo elevated permissions, admin user and non-admin user
 //     and provide context as cli flag
@@ -17,6 +20,31 @@ const sec = @import("sec");
 const winsec = sec.os.win;
 const childsec = sec.child;
 const ossec = sec.os;
+
+// pub const WINBOOL = c_int;
+// pub const LPVOID = ?*anyopaque;
+pub const PSID = ?*opaque{};
+pub const PSECURITY_DESCRIPTOR = ?*anyopaque;
+// pub const ACL = extern struct {
+//     AclRevision: winsec.BYTE,
+//     Sbz1: winsec.BYTE,
+//     AclSize: winsec.WORD,
+//     AceCount: winsec.WORD,
+//     Sbz2: winsec.WORD,
+// };
+
+// pub extern "advapi32" fn GetSecurityInfo(
+//     handle: ?winsec.HANDLE,
+//     ObjectType: winsec.SE_OBJECT_TYPE,
+//     SecurityInfo: winsec.DWORD,
+//     ppsidOwner: ?*PSID,
+//     ppsidGroup: ?*PSID,
+//     ppDacl: ?*?*ACL,
+//     ppSacl: ?*?*ACL,
+//     ppSecurityDescriptor: ?*PSECURITY_DESCRIPTOR
+//     ) winsec.DWORD;
+
+pub extern fn GetLastError() winsec.DWORD;
 
 pub fn main() !void {
     var gpa_state = std.heap.GeneralPurposeAllocator(.{ .safety = true }){};
@@ -52,37 +80,6 @@ fn behavior(gpa: std.mem.Allocator) !void {
     var it = try std.process.argsWithAllocator(gpa);
     defer it.deinit();
     _ = it.next() orelse unreachable; // skip binary name
-    // Caller_context may be 1. privileged, 2. user 1, user 2 with
-    // privilege level admin. Leave ut system for now.
-    const caller_context_cli = it.next() orelse @panic("missing caller context to test expected behavior");
-    // const child_path = it.next() orelse @panic("missing child path");
-    // _ = child_path;
-
-    // Permissions can only be given on spawning process, not afterwards.
-    const is_process_elevated = try isProcessElevated();
-    // const call_context = ctx: {
-    //     if (std.mem.eql(u8, caller_context_cli, "privileged")) break :ctx .Privileged;
-    //     else if (std.mem.eql(u8, caller_context_cli, "suser1")) break :ctx .Standard;
-    //     else if (std.mem.eql(u8, caller_context_cli, "ruser1")) break :ctx .Reduced;
-    // TODO how check callcontext against standard or reduced privileges
-
-    const call_context: CallContext = if (std.mem.eql(u8, caller_context_cli, "privileged"))
-        CallContext.Privileged
-    else
-        CallContext.Standard;
-
-    switch (call_context) {
-        .Privileged => try std.testing.expectEqual(is_process_elevated, true),
-        .Standard => try std.testing.expectEqual(is_process_elevated, false),
-        .Reduced => @panic("unreachable"),
-    }
-
-    // - 1. check current capabilities to impersonate a user or adjust a file owned by another user
-    // - 2. create some files of 2.1 different user, 2.2 same user, 2.3 admin
-    //   - ask for permissions
-    //   - run the same frmo elevated permissions
-    // - 3. drop privileges in the child process and try adding files or
-    // deleting files of that disallowed path and an allowed one
 
     const tmpDir = std.testing.tmpDir;
     var tmp = tmpDir(.{});
@@ -91,7 +88,6 @@ fn behavior(gpa: std.mem.Allocator) !void {
     // var file_admin_h: ?std.fs.File.Handle = null;
     var file_user_h: ?std.fs.File.Handle = null;
 
-    // TODO check if we are user system, admin or user account
 
     // const file_sys = try tmp.dir.createFile("file_sys", .{ .read = true });
     // const file_admin = try tmp.dir.createFile("file_admin", .{ .read = true });
@@ -103,13 +99,29 @@ fn behavior(gpa: std.mem.Allocator) !void {
     // file_admin_h = file_admin.handle;
     file_user_h = file_user.handle;
 
+    const sec_info = try winsec.GetSecurityInfo(
+            file_user_h,
+            winsec.SE_OBJECT_TYPE.FILE_OBJECT,
+            @intFromEnum(winsec.SECURITY_INFORMATION.OWNER),
+    );
+
+    std.debug.print("sec_info: {}\n", .{ sec_info });
+
+    // var account_buf: [100]
+
     // const sec_info = try winsec.GetSecurityInfo(
     //     file_user_h.?,
     //     winsec.SE_OBJECT_TYPE.FILE_OBJECT,
     //     winsec.SECURITY_INFORMATION.DACL,
     // );
+    // std.debug.print("sec_info: owner {*} group {*} dacl {*} sacl {*} secdescr {*}\n", .{
+    //     sec_info.ppsidOwner.?,
+    //     sec_info.ppsidGroup.?,
+    //     sec_info.ppDacl.?,
+    //     sec_info.ppSacl.?,
+    //     sec_info.ppSecurityDescriptor.?,
+    // });
     // _ = sec_info;
-    //
     // GetExplicitEntriesFromAcl
     // Major footgun on setting security permissions.
     // https://stackoverflow.com/questions/35227184/what-is-the-counterpart-to-the-getexplicitentriesfromacl-win32-api-function

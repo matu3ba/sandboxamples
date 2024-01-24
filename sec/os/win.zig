@@ -4,10 +4,11 @@
 const std = @import("std");
 const builtin = @import("builtin");
 const native_arch = builtin.cpu.arch;
-const kernel32 = @import("win/kernel32.zig");
 const LANG = @import("win/lang.zig");
 const SUBLANG = @import("win/sublang.zig");
 
+pub const kernel32 = @import("win/kernel32.zig");
+pub const advapi32 = @import("win/advapi32.zig");
 pub const Win32Error = @import("win/win32error.zig").Win32Error;
 pub const WINAPI: std.builtin.CallingConvention = if (native_arch == .x86)
     .Stdcall
@@ -35,8 +36,8 @@ pub const ULARGE_INTEGER = u64;
 pub const ULONG = u32;
 pub const LONG = i32;
 pub const ULONGLONG = u64;
-pub const PSID = *opaque {};
-pub const PSECURITY_DESCRIPTOR = *opaque {};
+pub const PSID = ?*opaque{};
+pub const PSECURITY_DESCRIPTOR = ?*anyopaque;
 
 pub const SECURITY_ATTRIBUTES = extern struct {
     nLength: DWORD,
@@ -568,11 +569,15 @@ pub fn OpenProcess(dwDesiredAccess: DWORD, bInheritHandle: bool, dwProcessId: DW
 }
 
 
-pub const EnumProcessModulesError = error{Unexpected};
+pub const EnumProcessModulesError = error{
+    Unexpected,
+    PartialCopy,
+};
 
 pub fn EnumProcessModules(hProcess: HANDLE, lphModule: *HMODULE, cb: DWORD, lpcbNeeded: *DWORD) EnumProcessModulesError!void {
     if (kernel32.K32EnumProcessModules(hProcess, lphModule, cb, lpcbNeeded) == 0) {
         switch (kernel32.GetLastError()) {
+            .PARTIAL_COPY => return error.PartialCopy,
             else => |err| return unexpectedError(err),
         }
     }
@@ -838,22 +843,21 @@ pub const TOKEN_ELEVATION = extern struct {
     TokenIsElevated: DWORD,
 };
 
-
-pub const SE_OBJECT_TYPE = enum(c_int) {
-  UNKNOWN_OBJECT_TYPE,
-  FILE_OBJECT,
-  SERVICE,
-  PRINTER,
-  REGISTRY_KEY,
-  LMSHARE,
-  KERNEL_OBJECT,
-  WINDOW_OBJECT,
-  DS_OBJECT,
-  DS_OBJECT_ALL,
-  PROVIDER_DEFINED_OBJECT,
-  WMIGUID_OBJECT,
-  REGISTRY_WOW64_32KEY,
-  REGISTRY_WOW64_64KEY,
+pub const SE_OBJECT_TYPE = enum(u32) {
+    UNKNOWN_OBJECT_TYPE = 0,
+    FILE_OBJECT = 1,
+    SERVICE = 2,
+    PRINTER = 3,
+    REGISTRY_KEY = 4,
+    LMSHARE = 5,
+    KERNEL_OBJECT = 6,
+    WINDOW_OBJECT = 7,
+    DS_OBJECT = 8,
+    DS_OBJECT_ALL = 9,
+    PROVIDER_DEFINED_OBJECT = 10,
+    WMIGUID_OBJECT = 11,
+    REGISTRY_WOW64_32KEY = 12,
+    REGISTRY_WOW64_64KEY = 13,
 };
 
 // zig fmt: off
@@ -886,35 +890,74 @@ pub const ACL = extern struct {
     Sbz2: WORD,
 };
 
-pub const SecurityInfo = struct {
-    ppsidOwner: ?PSID,
-    ppsidGroup: ?PSID,
-    ppDacl: ?*ACL,
-    ppSacl: ?*ACL,
-    ppSecurityDescriptor: ?PSECURITY_DESCRIPTOR,
-};
+// pub const SecurityInfo = struct {
+//     ppsidOwner: PSID,
+//     ppsidGroup: PSID,
+//     ppDacl: *ACL,
+//     ppSacl: *ACL,
+//     ppSecurityDescriptor: PSECURITY_DESCRIPTOR,
+// };
+//
+// pub const GetSecurityInfoError = error { Unexpected };
+//
+// pub fn GetSecurityInfo(
+//     handle: HANDLE,
+//     object_ty: SE_OBJECT_TYPE,
+//     sec_info_select: SECURITY_INFORMATION,
+// ) GetSecurityInfoError!SecurityInfo {
+//     var sec_info: SecurityInfo = undefined;
+//     if (kernel32.GetSecurityInfo(
+//         handle,
+//         object_ty,
+//         sec_info_select,
+//         &sec_info.ppsidOwner,
+//         &sec_info.ppsidGroup,
+//         &sec_info.ppDacl,
+//         &sec_info.ppSacl,
+//         &sec_info.ppSecurityDescriptor,
+//     ) != 0) {
+//         switch (kernel32.GetLastError()) {
+//             else => |err| return unexpectedError(err),
+//         }
+//     }
+//     return sec_info;
+// }
 
 pub const GetSecurityInfoError = error { Unexpected };
 
+pub const SecurityInfo = struct {
+    sid_owner: ?*PSID,
+    sid_group: ?*PSID,
+    dacl: ?*?*ACL,
+    sacl: ?*?*ACL,
+    sec_descr: ?*PSECURITY_DESCRIPTOR,
+};
+
 pub fn GetSecurityInfo(
-    handle: HANDLE,
+    handle: ?HANDLE,
     object_ty: SE_OBJECT_TYPE,
-    sec_info_select: SECURITY_INFORMATION,
+    secinfo_sel: DWORD,
 ) GetSecurityInfoError!SecurityInfo {
-    var sec_info: SecurityInfo = undefined;
-    if (kernel32.GetSecurityInfo(
+    var secinfo: SecurityInfo = .{
+        .sid_owner = null,
+        .sid_group = null,
+        .dacl = null,
+        .sacl = null,
+        .sec_descr = null,
+    };
+    if (advapi32.GetSecurityInfo(
         handle,
         object_ty,
-        sec_info_select,
-        &sec_info.ppsidOwner,
-        &sec_info.ppsidGroup,
-        &sec_info.ppDacl,
-        &sec_info.ppSacl,
-        &sec_info.ppSecurityDescriptor,
-    ) == 0) {
+        secinfo_sel,
+        @ptrCast(&secinfo.sid_owner),
+        @ptrCast(&secinfo.sid_group),
+        @ptrCast(&secinfo.dacl),
+        @ptrCast(&secinfo.sacl),
+        @ptrCast(&secinfo.sec_descr),
+    ) != 0) {
         switch (kernel32.GetLastError()) {
             else => |err| return unexpectedError(err),
         }
     }
-    return sec_info;
+    return secinfo;
 }

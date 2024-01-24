@@ -105,6 +105,30 @@ pub fn build(b: *std.Build) void {
     }
 
     {
+        const main_c = b.addExecutable(.{
+            .name = "main_getsecurityinfo_c",
+            .optimize = optimize,
+            .target = target,
+        });
+        main_c.addCSourceFile(.{
+            .file = .{ .path = "test/win/main_sec_info.c" },
+            .flags =  &.{},
+        });
+        main_c.linkLibC();
+        b.installArtifact(main_c);
+
+        const r_step_getsecinfo = b.addRunArtifact(main_c);
+        r_step_getsecinfo.step.dependOn(b.getInstallStep());
+        r_step_getsecinfo.expectExitCode(0);
+
+        if (b.host.result.os.tag == .windows) {
+            const step_getsecinfo = b.step("runwinsecinfo_c", "Run win get file owner test.");
+            step_getsecinfo.dependOn(&r_step_getsecinfo.step);
+            test_step.dependOn(&r_step_getsecinfo.step);
+        }
+    }
+
+    {
         // const child = b.addExecutable(.{
         //     .name = "child_acl",
         //     .root_source_file = .{ .path = "test/win/child_DCAL.zig" },

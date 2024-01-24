@@ -78,13 +78,25 @@ pub extern "kernel32" fn LoadLibraryW(lpLibFileName: [*:0]const u16) callconv(wi
 pub extern "kernel32" fn FreeLibrary(hModule: win.HMODULE) callconv(win.WINAPI) win.BOOL;
 
 // ====security
-pub extern "kernel32" fn GetSecurityInfo(
-    handle: win.HANDLE,
-    object_ty: win.SE_OBJECT_TYPE,
-    sec_info_select: win.SE_OBJECT_TYPE,
-    ppsidOwner: ?win.PSID,
-    ppsidGroup: ?win.PSID,
-    ppDacl: ?*win.ACL,
-    ppSacl: ?*win.ACL,
-    ppSecurityDescriptor: ?win.PSECURITY_DESCRIPTOR,
-) callconv(win.WINAPI) win.BOOL;
+// pub extern "kernel32" fn GetSecurityInfo(
+//     handle: win.HANDLE,
+//     object_ty: u32, // win.SE_OBJECT_TYPE,
+//     sec_info_select: u32, // win.SECURITY_INFORMATION,
+//     ppsidOwner: ?*win.PSID,
+//     ppsidGroup: ?*win.PSID,
+//     ppDacl: ?**win.ACL,
+//     ppSacl: ?**win.ACL,
+//     ppSecurityDescriptor: ?*win.PSECURITY_DESCRIPTOR,
+// ) callconv(win.WINAPI) win.BOOL;
+
+// advapi32
+// pub extern "advapi32" fn GetSecurityInfo(
+//     handle: ?win.HANDLE,
+//     ObjectType: win.DWORD, // win.SE_OBJECT_TYPE,
+//     SecurityInfo: win.DWORD,
+//     ppsidOwner: [*c]win.PSID,
+//     ppsidGroup: [*c]win.PSID,
+//     ppDacl: [*c]win.ACL,
+//     ppSacl: [*c]win.ACL,
+//     ppSecurityDescriptor: [*c]win.PSECURITY_DESCRIPTOR,
+// ) callconv(win.WINAPI) win.DWORD;
