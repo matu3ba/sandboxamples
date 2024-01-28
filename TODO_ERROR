@@ -1,0 +1,33 @@
+test
+└─ run main_job_api failure
+error.Unexpected: GetLastError(299): Nur ein Teil der ReadProcessMemory- oder WriteProcessMemory-Anforderung wurde abgeschlossen.
+
+C:\Users\hafer\dev\zi\sandboxamples\sec\os\win.zig:576:49: 0xb1b797 in EnumProcessModules (main_job_api.exe.obj)
+            else => |err| return unexpectedError(err),
+                                                ^
+C:\Users\hafer\dev\zi\sandboxamples\test\win\main_job_api.zig:58:34: 0xb1b434 in hasProcessPrefix (main_job_api.exe.obj)
+    try winsec.EnumProcessModules(h_proc, &h_mod, @sizeOf(@TypeOf(h_mod)), &cbNeeded);
+                                 ^
+C:\Users\hafer\dev\zi\sandboxamples\test\win\main_job_api.zig:79:48: 0xb13484 in hasAnyProcessPrefix (main_job_api.exe.obj)
+            const has_prefix = hasProcessPrefix(aProcesses[proc_i], prefix) catch |err| {
+                                               ^
+C:\Users\hafer\dev\zi\sandboxamples\test\win\main_job_api.zig:155:43: 0xb12413 in behavior (main_job_api.exe.obj)
+    const has_prefix = hasAnyProcessPrefix(L("evildescendent"));
+                                          ^
+C:\Users\hafer\dev\zi\sandboxamples\test\win\main_job_api.zig:38:17: 0xb13749 in main (main_job_api.exe.obj)
+    try behavior(gpa);
+                ^
+C:\Users\hafer\bin\lib\std\start.zig:350:69: 0xb1394c in WinStartup (main_job_api.exe.obj)
+    std.os.windows.ntdll.RtlExitUserProcess(initEventLoopAndCallMain());
+                                                                    ^
+???:?:?: 0x7fffc3b07343 in ??? (KERNEL32.DLL)
+???:?:?: 0x7fffc48026b0 in ??? (ntdll.dll)
+hasProcessPrefix err: error.Unexpected
+error: ProcessHasUnwantedPrefix
+C:\Users\hafer\dev\zi\sandboxamples\test\win\main_job_api.zig:156:21: 0xb124a1 in behavior (main_job_api.exe.obj)
+    if (has_prefix) return error.ProcessHasUnwantedPrefix;
+                    ^
+C:\Users\hafer\dev\zi\sandboxamples\test\win\main_job_api.zig:38:5: 0xb1377a in main (main_job_api.exe.obj)
+    try behavior(gpa);
+    ^
+error: the following command exited with code 1 (expected exited with code 0):
