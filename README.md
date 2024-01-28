@@ -105,4 +105,25 @@ Other BSDs and Unixes
 
 Tests are to be found in test/.
 
+General procedure:
+- 1. Find reasonable short example code
+- 2. Add testfile.c to test\win\ and build.zig
+- 3. zig translate-c test\win\testfile.c > test\win\testfile.zig, add it to build.zig
+- 4. simplify test\win\testfile.zig, implementation, error abstractions
+
+Deviation:
+- Follow different example code, ideally with sufficient explanations
+- Opaque pointers (Windows) hard to debug/check for correctness of operations
+- More than 3 parameter with optional pointer or weird problems
+- Standalone C and Zig files as libs, main calls C version and vice versa
+  * bare bone C pointers in Zig
+  * identical logic for Zig and C version
+  * combinations to figure out what went wrong
+  * view assembly diffs
+  * record program and inspect fn args structures
+- TODO setup Kernel debugging to get logic
+- TODO program + procederes to extract underlying in-Kernel structures/code
+  collection instead of opaque pointers (ntdll trace, ghidra?)
+- TODO trace fn args structures => debugger plugin
+
 ## References
