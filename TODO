@@ -1,0 +1,41 @@
+    // const file_system_h: ?std.fs.File.Handle = null;
+    // var file_admin_h: ?std.fs.File.Handle = null;
+    // const file_sys = try tmp.dir.createFile("file_sys", .{ .read = true });
+    // const file_admin = try tmp.dir.createFile("file_admin", .{ .read = true });
+    // defer file_sys.close();
+    // defer file_admin.close();
+    // file_system_h = file_sys.handle;
+    // file_admin_h = file_admin.handle;
+
+    // Caller_context may be 1. privileged, 2. user 1, user 2 with
+    // privilege level admin. Leave ut system for now.
+    // const caller_context_cli = it.next() orelse @panic("missing caller context to test expected behavior");
+    // const child_path = it.next() orelse @panic("missing child path");
+    // _ = child_path;
+    // TODO time travel debugging makes TI:Elevation return true
+    // Permissions can only be given on spawning process, not afterwards.
+    // const is_process_elevated = try isProcessElevated();
+    // const call_context = ctx: {
+    //     if (std.mem.eql(u8, caller_context_cli, "privileged")) break :ctx .Privileged;
+    //     else if (std.mem.eql(u8, caller_context_cli, "suser1")) break :ctx .Standard;
+    //     else if (std.mem.eql(u8, caller_context_cli, "ruser1")) break :ctx .Reduced;
+    // TODO how check callcontext against standard or reduced privileges
+
+    // const call_context: CallContext = if (std.mem.eql(u8, caller_context_cli, "privileged"))
+    //     CallContext.Privileged
+    // else
+    //     CallContext.Standard;
+
+    // TODO check if we are user system (unavailable on Windows 11)
+    // switch (call_context) {
+    //     .Privileged => try std.testing.expectEqual(is_process_elevated, true),
+    //     .Standard => try std.testing.expectEqual(is_process_elevated, false),
+    //     .Reduced => @panic("unreachable"),
+    // }
+
+    // - 1. check current capabilities to impersonate a user or adjust a file owned by another user
+    // - 2. create some files of 2.1 different user, 2.2 same user, 2.3 admin
+    //   - ask for permissions
+    //   - run the same frmo elevated permissions
+    // - 3. drop privileges in the child process and try adding files or
+    // deleting files of that disallowed path and an allowed one

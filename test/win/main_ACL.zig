@@ -1,4 +1,4 @@
-//! Get and set ACLs.
+//! Get and set ACLs (aclapi.h)
 // https://stackoverflow.com/questions/14849221/how-to-get-acl-permissions-for-a-folder-for-a-specific-user-with-c
 // https://github.com/MagnusTiberius/win32acl
 // https://github.com/MagnusTiberius/win32acl/blob/master/win32acl.cpp
@@ -11,6 +11,12 @@
 // https://stackoverflow.com/questions/73303801/check-if-a-different-process-is-running-with-elevated-privileges
 // https://learn.microsoft.com/en-us/windows/win32/secauthz/finding-the-owner-of-a-file-object-in-c--
 
+// https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/manage/understand-security-identifiers
+// https://learn.microsoft.com/en-us/windows/win32/secauthz/well-known-sids
+// https://woshub.com/convert-sid-to-username-and-vice-versa/
+// https://stackoverflow.com/questions/65988701/use-of-lookupaccountsidw
+// https://cpp.hotexamples.com/examples/-/-/LookupAccountSid/cpp-lookupaccountsid-function-examples.html
+
 // ci: run the same frmo elevated permissions, admin user and non-admin user
 //     and provide context as cli flag
 // https://superuser.com/questions/55809/how-to-run-program-from-command-line-with-elevated-rights
@@ -20,29 +26,6 @@ const sec = @import("sec");
 const winsec = sec.os.win;
 const childsec = sec.child;
 const ossec = sec.os;
-
-// pub const WINBOOL = c_int;
-// pub const LPVOID = ?*anyopaque;
-pub const PSID = ?*opaque{};
-pub const PSECURITY_DESCRIPTOR = ?*anyopaque;
-// pub const ACL = extern struct {
-//     AclRevision: winsec.BYTE,
-//     Sbz1: winsec.BYTE,
-//     AclSize: winsec.WORD,
-//     AceCount: winsec.WORD,
-//     Sbz2: winsec.WORD,
-// };
-
-// pub extern "advapi32" fn GetSecurityInfo(
-//     handle: ?winsec.HANDLE,
-//     ObjectType: winsec.SE_OBJECT_TYPE,
-//     SecurityInfo: winsec.DWORD,
-//     ppsidOwner: ?*PSID,
-//     ppsidGroup: ?*PSID,
-//     ppDacl: ?*?*ACL,
-//     ppSacl: ?*?*ACL,
-//     ppSecurityDescriptor: ?*PSECURITY_DESCRIPTOR
-//     ) winsec.DWORD;
 
 pub extern fn GetLastError() winsec.DWORD;
 
@@ -76,7 +59,6 @@ const CallContext = enum {
 
 fn behavior(gpa: std.mem.Allocator) !void {
     const L = std.unicode.utf8ToUtf16LeStringLiteral;
-    _ = L;
     var it = try std.process.argsWithAllocator(gpa);
     defer it.deinit();
     _ = it.next() orelse unreachable; // skip binary name
@@ -84,44 +66,93 @@ fn behavior(gpa: std.mem.Allocator) !void {
     const tmpDir = std.testing.tmpDir;
     var tmp = tmpDir(.{});
     defer tmp.cleanup();
-    // const file_system_h: ?std.fs.File.Handle = null;
-    // var file_admin_h: ?std.fs.File.Handle = null;
     var file_user_h: ?std.fs.File.Handle = null;
-
-
-    // const file_sys = try tmp.dir.createFile("file_sys", .{ .read = true });
-    // const file_admin = try tmp.dir.createFile("file_admin", .{ .read = true });
     const file_user = try tmp.dir.createFile("file_user", .{ .read = true });
-    // defer file_sys.close();
-    // defer file_admin.close();
     defer file_user.close();
-    // file_system_h = file_sys.handle;
-    // file_admin_h = file_admin.handle;
     file_user_h = file_user.handle;
 
     const sec_info = try winsec.GetSecurityInfo(
-            file_user_h,
-            winsec.SE_OBJECT_TYPE.FILE_OBJECT,
-            @intFromEnum(winsec.SECURITY_INFORMATION.OWNER),
+        file_user_h,
+        winsec.SE_OBJECT_TYPE.FILE_OBJECT,
+        @intFromEnum(winsec.SECURITY_INFORMATION.OWNER),
     );
 
     std.debug.print("sec_info: {}\n", .{ sec_info });
+    std.debug.print("sec_info.sid_owner: {any}\n", .{ sec_info.sid_owner });
+    std.debug.print("sec_info.sid_owner: {any}\n", .{ sec_info.sid_owner.? });
+    std.debug.print("sec_info.sid_owner: {any}\n", .{ sec_info.sid_owner.?.* });
+    std.debug.print("sec_info.sid_owner: {any}\n", .{ sec_info.sid_owner.?.*.? });
 
+    var acc_name: winsec.LPWSTR = @as([*:0]u16, @constCast(L("")));
+    var size_acc_name: winsec.DWORD = 0;
+    var domain_name: winsec.LPWSTR = @as([*:0]u16, @constCast(L("")));
+    var size_domain_name: winsec.DWORD = 0;
+    var eUse: winsec.SID_NAME_USE = winsec.SID_NAME_USE.Unknown;
+
+// pub extern fn LookupAccountSidW(
+//      lpSystemName: LPCWSTR,
+//      Sid: PSID,
+//      Name: LPWSTR,
+//      cchName: LPDWORD,
+//      ReferencedDomainName: LPWSTR,
+//      cchReferencedDomainName: LPDWORD,
+//      peUse: PSID_NAME_USE
+//  ) WINBOOL;
+// bRtnBool = LookupAccountSidW(
+//      null,
+//      pSidOwner,
+//      AcctName,
+//      @as(LPDWORD, @ptrCast(@alignCast(&dwAcctName))),
+//      DomainName,
+//      @as(LPDWORD, @ptrCast(@alignCast(&dwDomainName))),
+//      &eUse
+//  );
+    // const sid_owner = sec_info.sid_owner.?.*;
+
+    // wrong parameters segfault with bogous error 3 (PATH_NOT_FOUND)
+    // const st = winsec.advapi32.LookupAccountSidW(
+    //     null,
+    //     null, // sid_owner,
+    //     null,
+    //     &size_acc_name,
+    //     null,
+    //     &size_domain_name,
+    //     &eUse,
+    // );
+    // if (st == 0) {
+    //     const err = winsec.kernel32.GetLastError();
+    //     std.debug.print("error code: {d}\n", .{ err });
+    //     return error.InvalValue;
+    // }
+
+    // fails via INVAL_PARAMETER, if second param == null and
+    // SEGFAULT otherwise with error 3 (PATH_NOT_FOUND)
+    try winsec.LookupAccountSid(
+        null,
+        sec_info.sid_owner.?.*, // sid_owner,
+        acc_name[0..],
+        &size_acc_name,
+        domain_name[0..],
+        &size_domain_name,
+        &eUse,
+    );
+
+    // try winsec.LookupAccountSid(
+    //     null,
+    //     sec_info.sid_owner.?.*,
+    //     acc_name[0..],
+    //     &size_acc_name,
+    //     domain_name[0..],
+    //     &size_domain_name,
+    //     &eUse,
+    // );
+
+    // TODO
     // var account_buf: [100]
 
-    // const sec_info = try winsec.GetSecurityInfo(
-    //     file_user_h.?,
-    //     winsec.SE_OBJECT_TYPE.FILE_OBJECT,
-    //     winsec.SECURITY_INFORMATION.DACL,
-    // );
-    // std.debug.print("sec_info: owner {*} group {*} dacl {*} sacl {*} secdescr {*}\n", .{
-    //     sec_info.ppsidOwner.?,
-    //     sec_info.ppsidGroup.?,
-    //     sec_info.ppDacl.?,
-    //     sec_info.ppSacl.?,
-    //     sec_info.ppSecurityDescriptor.?,
-    // });
-    // _ = sec_info;
+    // TODO
+    // https://learn.microsoft.com/en-us/windows/win32/secauthz/security-descriptor-operations
+
     // GetExplicitEntriesFromAcl
     // Major footgun on setting security permissions.
     // https://stackoverflow.com/questions/35227184/what-is-the-counterpart-to-the-getexplicitentriesfromacl-win32-api-function

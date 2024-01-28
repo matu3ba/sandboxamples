@@ -898,31 +898,6 @@ pub const ACL = extern struct {
 //     ppSecurityDescriptor: PSECURITY_DESCRIPTOR,
 // };
 //
-// pub const GetSecurityInfoError = error { Unexpected };
-//
-// pub fn GetSecurityInfo(
-//     handle: HANDLE,
-//     object_ty: SE_OBJECT_TYPE,
-//     sec_info_select: SECURITY_INFORMATION,
-// ) GetSecurityInfoError!SecurityInfo {
-//     var sec_info: SecurityInfo = undefined;
-//     if (kernel32.GetSecurityInfo(
-//         handle,
-//         object_ty,
-//         sec_info_select,
-//         &sec_info.ppsidOwner,
-//         &sec_info.ppsidGroup,
-//         &sec_info.ppDacl,
-//         &sec_info.ppSacl,
-//         &sec_info.ppSecurityDescriptor,
-//     ) != 0) {
-//         switch (kernel32.GetLastError()) {
-//             else => |err| return unexpectedError(err),
-//         }
-//     }
-//     return sec_info;
-// }
-
 pub const GetSecurityInfoError = error { Unexpected };
 
 pub const SecurityInfo = struct {
@@ -960,4 +935,45 @@ pub fn GetSecurityInfo(
         }
     }
     return secinfo;
+}
+
+pub const SID_NAME_USE = enum(u32) {
+    User = 1,
+    Group = 2,
+    Domain = 3,
+    Alias = 4,
+    WellKnownGroup = 5,
+    DeletedAccount = 6,
+    Invalid = 7,
+    Unknown = 8,
+    Computer = 9,
+    Label = 10,
+    LogonSession = 11,
+};
+
+pub const LookupAccountSidError = error { Unexpected };
+
+pub fn LookupAccountSid(
+    lpSystemName: ?LPCWSTR,
+    Sid: PSID,
+    Name: ?LPWSTR,
+    cchName: *DWORD,
+    ReferencedDomainName: ?LPWSTR,
+    cchReferencedDomainName: *DWORD,
+    peUse: *SID_NAME_USE,
+) LookupAccountSidError!void {
+    if (advapi32.LookupAccountSidW(
+        lpSystemName,
+        Sid,
+        Name,
+        cchName,
+        ReferencedDomainName,
+        cchReferencedDomainName,
+        peUse,
+    ) == 0) {
+        switch (kernel32.GetLastError()) {
+            .INVALID_PARAMETER => @panic("invalid parameter"),
+            else => |err| return unexpectedError(err),
+        }
+    }
 }

@@ -128,6 +128,26 @@ pub fn build(b: *std.Build) void {
         }
     }
 
+    // {
+    //     const main_z = b.addExecutable(.{
+    //         .name = "main_getsecurityinfo_z",
+    //         .optimize = optimize,
+    //         .target = target,
+    //         .root_source_file = .{ .path = "test/win/main_sec_info.zig" },
+    //     });
+    //     b.installArtifact(main_z);
+    //
+    //     const r_step_getsecinfo = b.addRunArtifact(main_z);
+    //     r_step_getsecinfo.step.dependOn(b.getInstallStep());
+    //     r_step_getsecinfo.expectExitCode(0);
+    //
+    //     if (b.host.result.os.tag == .windows) {
+    //         const step_getsecinfo = b.step("runwinsecinfo_z", "Run win get file owner test.");
+    //         step_getsecinfo.dependOn(&r_step_getsecinfo.step);
+    //         test_step.dependOn(&r_step_getsecinfo.step);
+    //     }
+    // }
+
     {
         // const child = b.addExecutable(.{
         //     .name = "child_acl",
