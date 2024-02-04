@@ -60,21 +60,22 @@ Windows
 - [ ] simple privilege dropping program for untrusted input
 
 Linux
-- [ ] seccomp
+- [ ] landlock (access control on kernel objects)
+- [ ] seccomp-bpf (syscall filtering)
 - [ ] parallel process spawn handle leak problem with workarounds
     - mutex or only standard handles
     - list of to be closed handles does not work, because order of handles
       which are inherited is not guaranteed to be stable and may vary during
       process lifetime
-- [ ] setuid, lockdown?
+- [ ] setuid
 - [ ] cgroups (semantic mismatch, more powerful than job object),
     - https://www.schutzwerk.com/en/blog/linux-container-cgroups-03-memory-cpu-freezer-dev/
     - https://man7.org/linux/man-pages/man7/cgroups.7.html
     - not mitigating double fork: setrlimit (`RLIMIT_CPU` with SIGKILL or child process must handle it)
-    - cgroups nice for upper process limit and network sandbox and only
-      solution to process tracking (double fork etc)
+    - cgroups nice for upper process limit and network sandbox and
+      solution to process tracking (double fork etc) with other being reaper approach
 - [ ] file system sandboxing by user account
-- [ ] network sandboxing, seccomp
+- [ ] network sandboxing, seccomp-bpf
 - [ ] what other persistent state may be accessible?
       - look into namespaces https://lwn.net/Articles/531114/
 - [ ] minimal system setup, solution?
