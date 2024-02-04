@@ -17,7 +17,9 @@
 
 Windows
 - [x] win32k mitigation + others
+  - `test/win/main_win32k_mitigation.zig`
 - [x] explicit handle inheritance
+  - `test/win/main_explicit_handle_inheritance.zig`
 - [x] job object system
   [link](https://learn.microsoft.com/en-us/windows/win32/api/jobapi2/) to limit
   memory, cpu usage and kill process group
@@ -26,6 +28,7 @@ Windows
     - [x] basic
     - [x] `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE, JOBOBJECT_EXTENDED_LIMIT_INFORMATION, SetInformationJobObject`
     - [x] Enumerate process names on system
+    - `test/win/main_job_api.zig`
 - [ ] file system sandboxing by user account (might need to remove and readd account)
       - ignore for now and always use explicit paths for PATH and alike.
       - use ntdll calls eventually, because we already have those in Zig libstd
@@ -36,12 +39,12 @@ Windows
     - [ ] ACLs https://learn.microsoft.com/en-us/windows/win32/secauthz/access-control-lists
     - [ ] fetch | execution time separation via different users
     - [ ] sample integrity checks on startups
-    - [ ] impersonation https://learn.microsoft.com/en-us/windows/win32/cossdk/client-impersonation-and-delegation
     - [ ] access overview https://learn.microsoft.com/en-us/windows/security/identity-protection/access-control/access-control
-- [ ] permission limitations of process and subprocess (user based?)
-    - Applications must set security limits individually for each process.
-    - Permissions also organized into user groups instead of bits
-- [ ] network sandboxing?
+    - reverse engineering problem source branch `fix_call_issues`
+    - `test/win/main_ACL.zig`
+    - `test/win/main_sec_info.c`
+- [ ] impersonation (setuid under Windows) https://learn.microsoft.com/en-us/windows/win32/cossdk/client-impersonation-and-delegation
+- [ ] network sandboxing (ie block specific user from internet access)
     - simple solution [not usable in Windows Home since it requires group policy](https://learn.microsoft.com/en-us/windows/win32/netmgmt/user-functions)
     - results indicate that [one would need to write your own firewall](https://stackoverflow.com/questions/2305375/blocking-all-windows-internet-access-from-a-win32-app)
       and run it in kernel mode
@@ -49,15 +52,11 @@ Windows
     - alternative: glasswire or portmaster
 - [ ] user and system setup
 - [ ] review for further accessible persistent state
-- [ ] idea: ETW based tracing + SCL via job unit
 - [ ] security shutdown
       - [regular shutdown only](https://learn.microsoft.com/en-us/windows/win32/shutdown/how-to-shut-down-the-system)
       - [shutdown reasons](https://learn.microsoft.com/en-us/windows/win32/shutdown/system-shutdown-reason-codes)
-- [ ] basic attacks
-      - escape job unit via higher api
-      - escape job unit via flags in CreateProcess
-      - access and adjust job unit
-- [ ] simple privilege dropping program for untrusted input
+- [ ] idea: ETW based tracing + SCL via job unit
+- [ ] idea: stub kernel32 and ntdll calls as admin to run own filter code in kernel space
 
 Linux
 - [ ] landlock (access control on kernel objects)
@@ -67,6 +66,7 @@ Linux
     - list of to be closed handles does not work, because order of handles
       which are inherited is not guaranteed to be stable and may vary during
       process lifetime
+- [ ] file system sandboxing by user account (chown, chmod, Linux permission system)
 - [ ] setuid
 - [ ] cgroups (semantic mismatch, more powerful than job object),
     - https://www.schutzwerk.com/en/blog/linux-container-cgroups-03-memory-cpu-freezer-dev/
@@ -74,7 +74,7 @@ Linux
     - not mitigating double fork: setrlimit (`RLIMIT_CPU` with SIGKILL or child process must handle it)
     - cgroups nice for upper process limit and network sandbox and
       solution to process tracking (double fork etc) with other being reaper approach
-- [ ] file system sandboxing by user account
+      - https://github.com/catern/supervise
 - [ ] network sandboxing, seccomp-bpf
 - [ ] what other persistent state may be accessible?
       - look into namespaces https://lwn.net/Articles/531114/
@@ -89,7 +89,7 @@ MacOS
 - [ ] how to [wait for process group](https://jmmv.dev/2019/11/wait-for-process-group-darwin.html)
     - kevent NOTE\_TRACK needed
     - orphaned processes still not cleaned up
-    - fork bomb unmitigated
+    - fork bomb unmitigated (applying posix limits needed)
     - workaround jobs not finishing in deadline: kill all processes with uid
 - [ ] what other persistent state may be accessible?
 - [ ] minimal system setup, solution?
