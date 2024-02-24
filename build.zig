@@ -6,7 +6,11 @@ const mem = std.mem;
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
-    const sec = b.createModule(.{ .root_source_file = .{ .path = "sec.zig" } });
+
+    // public module usable outside of this build.zig
+    const sec = b.addModule("libsecproc", .{ .root_source_file = .{ .path = "sec.zig" } });
+    // private module unusable outside of this build.zig
+    // const sec = b.createModule(.{ .root_source_file = .{ .path = "sec.zig" } });
 
     if (builtin.os.tag == .wasi) return;
     const test_step = b.step("test", "Run unit tests");
@@ -112,7 +116,7 @@ pub fn build(b: *std.Build) void {
         });
         main_c.addCSourceFile(.{
             .file = .{ .path = "test/win/main_sec_info.c" },
-            .flags =  &.{},
+            .flags = &.{},
         });
         main_c.linkLibC();
         b.installArtifact(main_c);

@@ -3,9 +3,10 @@
     .version = "0.0.1",
     .paths = .{
         "LICENSE",
+        "build.zig",
         "sec.zig",
-        "sec/os.zig",
         "sec/child_process.zig",
+        "sec/os.zig",
         "sec/os/win.zig",
         "sec/os/win/advapi32.zig",
         "sec/os/win/kernel32.zig",
