@@ -43,7 +43,7 @@ Windows
     - reverse engineering problem source branch `fix_call_issues`
     - `test/win/main_ACL.zig`
     - `test/win/main_sec_info.c`
-- [ ] impersonation (setuid under Windows) https://learn.microsoft.com/en-us/windows/win32/cossdk/client-impersonation-and-delegation
+- [ ] impersonation (setreuid under Windows) https://learn.microsoft.com/en-us/windows/win32/cossdk/client-impersonation-and-delegation
 - [ ] network sandboxing (ie block specific user from internet access)
     - simple solution [not usable in Windows Home since it requires group policy](https://learn.microsoft.com/en-us/windows/win32/netmgmt/user-functions)
     - results indicate that [one would need to write your own firewall](https://stackoverflow.com/questions/2305375/blocking-all-windows-internet-access-from-a-win32-app)
@@ -67,7 +67,7 @@ Linux
       which are inherited is not guaranteed to be stable and may vary during
       process lifetime
 - [ ] file system sandboxing by user account (chown, chmod, Linux permission system)
-- [ ] setuid
+- [ ] setreuid, setregid (bounded waiting, fixing libstd child\_process errors)
 - [ ] cgroups (semantic mismatch, more powerful than job object),
     - https://www.schutzwerk.com/en/blog/linux-container-cgroups-03-memory-cpu-freezer-dev/
     - https://man7.org/linux/man-pages/man7/cgroups.7.html
@@ -81,6 +81,7 @@ Linux
 - [ ] minimal system setup, solution?
 - [ ] tight system supervision setup, solution?
 - [ ] security shutdown, lockdown?
+- [ ] more advanced: race-free signaling
 
 MacOS
 - [ ] sandbox-exec, look into firefox and chromium sandboxing code

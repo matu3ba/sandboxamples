@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// SPDX-SnippetCopyrightText: Zig contributors
+
 const win = @import("../win.zig");
 
 pub extern "advapi32" fn GetSecurityInfo(
@@ -8,5 +11,5 @@ pub extern "advapi32" fn GetSecurityInfo(
     ppsidGroup: ?*win.PSID,
     ppDacl: ?*?*win.ACL,
     ppSacl: ?*?*win.ACL,
-    ppSecurityDescriptor: ?*win.PSECURITY_DESCRIPTOR
+    ppSecurityDescriptor: ?*win.PSECURITY_DESCRIPTOR,
 ) win.DWORD;

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// SPDX-SnippetCopyrightText: Zig contributors
+
 const win = @import("../win.zig");
 
 pub extern "kernel32" fn FormatMessageW(dwFlags: win.DWORD, lpSource: ?win.LPVOID, dwMessageId: win.Win32Error, dwLanguageId: win.DWORD, lpBuffer: [*]u16, nSize: win.DWORD, Arguments: ?*win.va_list) callconv(win.WINAPI) win.DWORD;
@@ -44,7 +47,6 @@ pub extern "kernel32" fn CreateProcessW(
     lpProcessInformation: *win.PROCESS_INFORMATION,
 ) callconv(win.WINAPI) win.BOOL;
 
-
 pub extern "kernel32" fn GetHandleInformation(hObject: win.HANDLE, dwFlags: *win.DWORD) callconv(win.WINAPI) win.BOOL;
 
 pub extern "kernel32" fn CreateJobObjectW(lpJobAttributes: ?*win.SECURITY_ATTRIBUTES, lpName: ?win.LPCWSTR) callconv(win.WINAPI) win.HANDLE;
@@ -64,7 +66,7 @@ pub extern "kernel32" fn GetTokenInformation(
     token_info_ty: win.TokenInfo,
     token_info: ?win.LPVOID,
     token_info_len: win.DWORD,
-    used_token_info_len: *win.DWORD
+    used_token_info_len: *win.DWORD,
 ) callconv(win.WINAPI) win.BOOL;
 
 // ====checks

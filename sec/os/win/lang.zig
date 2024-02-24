@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// SPDX-SnippetCopyrightText: Zig contributors
+
 pub const NEUTRAL = 0x00;
 pub const INVARIANT = 0x7f;
 pub const AFRIKAANS = 0x36;
