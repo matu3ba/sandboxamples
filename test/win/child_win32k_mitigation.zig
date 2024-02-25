@@ -3,13 +3,11 @@ const sec = @import("sec");
 const ossec = sec.os;
 const winsec = sec.os.win;
 
-
 pub fn main() !void {
     try behavior();
     std.process.exit(0);
 }
 
-// TODO SPDX identifier
 fn behavior() !void {
     const SYSCALL_DISABLE_POLICY = winsec.PROCESS_MITIGATION_POLICY;
     var effectice_policy: winsec.PROCESS_MITIGATION_SYSTEM_CALL_DISABLE_POLICY = undefined;

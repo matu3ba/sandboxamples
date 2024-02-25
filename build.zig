@@ -15,7 +15,7 @@ pub fn build(b: *std.Build) void {
     if (builtin.os.tag == .wasi) return;
     const test_step = b.step("test", "Run unit tests");
 
-    {
+    if (builtin.os.tag == .windows) {
         const child = b.addExecutable(.{
             .name = "child_explicit_handle_inheritance",
             .root_source_file = .{ .path = "test/win/child_explicit_handle_inheritance.zig" },
@@ -46,7 +46,7 @@ pub fn build(b: *std.Build) void {
         }
     }
 
-    {
+    if (builtin.os.tag == .windows) {
         const child = b.addExecutable(.{
             .name = "child_win32k_mitigation",
             .root_source_file = .{ .path = "test/win/child_win32k_mitigation.zig" },
@@ -77,7 +77,7 @@ pub fn build(b: *std.Build) void {
         }
     }
 
-    {
+    if (builtin.os.tag == .windows) {
         const child = b.addExecutable(.{
             .name = "evildescendent_child_job_api",
             .root_source_file = .{ .path = "test/win/child_job_api.zig" },
@@ -108,7 +108,7 @@ pub fn build(b: *std.Build) void {
         }
     }
 
-    {
+    if (builtin.os.tag == .windows) {
         const main_c = b.addExecutable(.{
             .name = "main_getsecurityinfo_c",
             .optimize = optimize,
@@ -132,7 +132,7 @@ pub fn build(b: *std.Build) void {
         }
     }
 
-    {
+    if (builtin.os.tag == .windows) {
         // const child = b.addExecutable(.{
         //     .name = "child_acl",
         //     .root_source_file = .{ .path = "test/win/child_DCAL.zig" },

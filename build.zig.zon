@@ -4,6 +4,7 @@
     .paths = .{
         "LICENSE",
         "build.zig",
+        "build.zig.zon",
         "sec.zig",
         "sec/child_process.zig",
         "sec/os.zig",

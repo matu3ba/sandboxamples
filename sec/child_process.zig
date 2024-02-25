@@ -245,7 +245,8 @@ pub const ChildProcess = struct {
         return self.term.?;
     }
 
-    pub fn killPosix(self: *ChildProcess) !Term {
+    // error.AlreadyTerminated ?
+    pub fn killPosix(self: *ChildProcess) SpawnError!Term {
         if (self.term) |term| {
             self.cleanupStreams();
             return term;
@@ -377,7 +378,7 @@ pub const ChildProcess = struct {
         return self.term.?;
     }
 
-    fn waitPosix(self: *ChildProcess) !Term {
+    fn waitPosix(self: *ChildProcess) SpawnError!Term {
         if (self.term) |term| {
             self.cleanupStreams();
             return term;
@@ -409,12 +410,13 @@ pub const ChildProcess = struct {
         return result;
     }
 
-    fn waitUnwrapped(self: *ChildProcess) !void {
+    fn waitUnwrapped(self: *ChildProcess) SpawnError!void {
         const res: os.WaitPidResult = res: {
             if (self.request_resource_usage_statistics) {
                 switch (builtin.os.tag) {
                     .linux, .macos, .ios => {
                         var ru: std.os.rusage = undefined;
+                        // usage not super robust
                         const res = os.wait4(self.id, 0, &ru);
                         self.resource_usage_statistics.rusage = ru;
                         break :res res;
@@ -427,11 +429,11 @@ pub const ChildProcess = struct {
         };
         const status = res.status;
         self.cleanupStreams();
-        self.handleWaitResult(status);
+        try self.handleWaitResult(status);
     }
 
-    fn handleWaitResult(self: *ChildProcess, status: u32) void {
-        self.term = self.cleanupAfterWait(status);
+    fn handleWaitResult(self: *ChildProcess, status: u32) SpawnError!void {
+        self.term = try self.cleanupAfterWait(status);
     }
 
     fn cleanupStreams(self: *ChildProcess) void {
@@ -449,7 +451,7 @@ pub const ChildProcess = struct {
         }
     }
 
-    fn cleanupAfterWait(self: *ChildProcess, status: u32) !Term {
+    fn cleanupAfterWait(self: *ChildProcess, status: u32) SpawnError!Term {
         if (self.err_pipe) |err_pipe| {
             defer destroyPipe(err_pipe);
 
