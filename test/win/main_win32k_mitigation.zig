@@ -44,7 +44,7 @@ fn behavior(gpa: std.mem.Allocator) !void {
     _ = it.next() orelse unreachable; // skip binary name
     const child_path = it.next() orelse unreachable;
 
-    var child = childsec.ChildProcess.init(&.{ child_path }, gpa);
+    var child = childsec.ChildProcess.init(&.{child_path}, gpa);
     child.stdin_behavior = .Close;
     child.stdout_behavior = .Inherit;
     child.stderr_behavior = .Inherit;
@@ -60,6 +60,6 @@ fn behavior(gpa: std.mem.Allocator) !void {
         else => |term| {
             std.debug.print("abnormal child exit: {}", .{term});
             return error.AbnormalChildExit;
-        }
+        },
     }
 }

@@ -43,11 +43,10 @@ pub fn main() !void {
 fn hasProcessPrefix(pid: u32, prefix: []const u16) !bool {
     var win_path_buf: [*:0]winsec.WCHAR = undefined;
     const h_proc: winsec.HANDLE = winsec.OpenProcess(
-        @intFromEnum(winsec.PROCESS_ACCESS_RIGHTS.QUERY_INFORMATION)
-        | @intFromEnum(winsec.PROCESS_ACCESS_RIGHTS.VM_READ),
+        @intFromEnum(winsec.PROCESS_ACCESS_RIGHTS.QUERY_INFORMATION) | @intFromEnum(winsec.PROCESS_ACCESS_RIGHTS.VM_READ),
         false,
         pid,
-    ) catch |err| switch(err) {
+    ) catch |err| switch (err) {
         error.AccessDenied => return false,
         else => return true,
     };
@@ -56,7 +55,7 @@ fn hasProcessPrefix(pid: u32, prefix: []const u16) !bool {
     var cbNeeded: winsec.DWORD = undefined;
 
     try winsec.EnumProcessModules(h_proc, &h_mod, @sizeOf(@TypeOf(h_mod)), &cbNeeded);
-    winsec.GetModuleBaseName(h_proc, h_mod, win_path_buf[0..], @sizeOf(@TypeOf(win_path_buf))/@sizeOf(winsec.WCHAR)) catch |err| switch (err) {
+    winsec.GetModuleBaseName(h_proc, h_mod, win_path_buf[0..], @sizeOf(@TypeOf(win_path_buf)) / @sizeOf(winsec.WCHAR)) catch |err| switch (err) {
         error.AccessDenied => return false,
         else => return true,
     };
@@ -69,7 +68,7 @@ fn hasAnyProcessPrefix(prefix: []const u16) bool {
     var cbNeeded: winsec.DWORD = undefined;
     var cProcesses: winsec.DWORD = undefined;
     winsec.EnumProcesses(aProcesses[0..], @sizeOf(@TypeOf(aProcesses)), &cbNeeded) catch |err| {
-        std.debug.print("could not list processes, err: {}\n",.{err});
+        std.debug.print("could not list processes, err: {}\n", .{err});
         return true;
     };
     cProcesses = cbNeeded / @sizeOf(winsec.DWORD);
@@ -77,7 +76,7 @@ fn hasAnyProcessPrefix(prefix: []const u16) bool {
     while (proc_i < cProcesses) : (proc_i += 1) {
         if (aProcesses[proc_i] != 0) {
             const has_prefix = hasProcessPrefix(aProcesses[proc_i], prefix) catch |err| {
-                std.debug.print("hasProcessPrefix err: {}\n", .{ err });
+                std.debug.print("hasProcessPrefix err: {}\n", .{err});
                 return true;
             };
             if (has_prefix) return true;
@@ -97,10 +96,7 @@ fn behavior(gpa: std.mem.Allocator) !void {
     defer std.os.close(h_jo);
     var jo_eli = std.mem.zeroes(winsec.JOBOBJECT_EXTENDED_LIMIT_INFORMATION);
     jo_eli.BasicLimitInformation.LimitFlags =
-        @intFromEnum(winsec.JOB_OBJECT_LIMIT.KILL_ON_JOB_CLOSE)
-        | @intFromEnum(winsec.JOB_OBJECT_LIMIT.JOB_MEMORY)
-        | @intFromEnum(winsec.JOB_OBJECT_LIMIT.ACTIVE_PROCESS)
-        | @intFromEnum(winsec.JOB_OBJECT_LIMIT.JOB_TIME);
+        @intFromEnum(winsec.JOB_OBJECT_LIMIT.KILL_ON_JOB_CLOSE) | @intFromEnum(winsec.JOB_OBJECT_LIMIT.JOB_MEMORY) | @intFromEnum(winsec.JOB_OBJECT_LIMIT.ACTIVE_PROCESS) | @intFromEnum(winsec.JOB_OBJECT_LIMIT.JOB_TIME);
     jo_eli.JobMemoryLimit = 20_971_520; // [B] => 20 MB = 20 * (1024)^2 B = 20 * 1_048_576 = 20_971_520 B
     jo_eli.BasicLimitInformation.ActiveProcessLimit = 32;
     jo_eli.BasicLimitInformation.PerJobUserTimeLimit = 1_000 * 1_000 * 10; // 1s = 1_000 * 1_000 * 10 * 100ns
@@ -137,7 +133,7 @@ fn behavior(gpa: std.mem.Allocator) !void {
     // CANCELLED = 1223 should be in u32, but we get then error code 199 by windows
     // @intFromEnum(winsec.Win32Error.CANCELLED);
     const expected_exit_code: u32 = 1;
-                                          //
+    //
     std.debug.assert(expected_exit_code > 0);
 
     { // alive subprocesses block
@@ -166,6 +162,6 @@ fn behavior(gpa: std.mem.Allocator) !void {
         else => |term| {
             std.debug.print("abnormal child exit: {}\n", .{term});
             return error.AbnormalChildExit;
-        }
+        },
     }
 }

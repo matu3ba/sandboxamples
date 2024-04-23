@@ -77,14 +77,14 @@ fn behavior(gpa: std.mem.Allocator) !void {
         _ = it.next() orelse unreachable; // skip binary name
         const child_path = it.next() orelse unreachable;
 
-        const T = [NUM_FILES+1][ossec.handleCharSize]u8;
-        var buf_handles_s  = std.mem.zeroes(T);
-        var handles_s: [NUM_FILES+1][]const u8 = undefined;
+        const T = [NUM_FILES + 1][ossec.handleCharSize]u8;
+        var buf_handles_s = std.mem.zeroes(T);
+        var handles_s: [NUM_FILES + 1][]const u8 = undefined;
         try std.testing.expectEqual(handles_s.len, file_hs.len + 1);
         try std.testing.expectEqual(handles_s.len, buf_handles_s.len);
         handles_s[0] = child_path[0..child_path.len];
         for (file_hs, 0..) |file_h, i| {
-            handles_s[i+1] = try ossec.handleToString(file_h, buf_handles_s[i+1][0..]);
+            handles_s[i + 1] = try ossec.handleToString(file_h, buf_handles_s[i + 1][0..]);
         }
 
         var child = childsec.ChildProcess.init(&handles_s, gpa);
@@ -102,7 +102,7 @@ fn behavior(gpa: std.mem.Allocator) !void {
             else => |term| {
                 std.debug.print("abnormal child exit: {}", .{term});
                 return error.AbnormalChildExit;
-            }
+            },
         }
     }
 
@@ -120,7 +120,7 @@ fn behavior(gpa: std.mem.Allocator) !void {
 
         for (file_hs, 0..) |_, i| {
             var res_buf: [100]u8 = undefined;
-            const file_rd = std.fs.File { .handle = file_hs[i] };
+            const file_rd = std.fs.File{ .handle = file_hs[i] };
             const file_len = try file_rd.readAll(&res_buf);
             const expected_result = try std.fmt.bufPrint(res_buf[0..], "testfile{d}", .{i});
             std.testing.expectEqualSlices(u8, expected_result, res_buf[0..file_len]) catch {

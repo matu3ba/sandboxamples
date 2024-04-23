@@ -23,7 +23,7 @@ const ossec = sec.os;
 
 // pub const WINBOOL = c_int;
 // pub const LPVOID = ?*anyopaque;
-pub const PSID = ?*opaque{};
+pub const PSID = ?*opaque {};
 pub const PSECURITY_DESCRIPTOR = ?*anyopaque;
 // pub const ACL = extern struct {
 //     AclRevision: winsec.BYTE,
@@ -88,7 +88,6 @@ fn behavior(gpa: std.mem.Allocator) !void {
     // var file_admin_h: ?std.fs.File.Handle = null;
     var file_user_h: ?std.fs.File.Handle = null;
 
-
     // const file_sys = try tmp.dir.createFile("file_sys", .{ .read = true });
     // const file_admin = try tmp.dir.createFile("file_admin", .{ .read = true });
     const file_user = try tmp.dir.createFile("file_user", .{ .read = true });
@@ -100,12 +99,12 @@ fn behavior(gpa: std.mem.Allocator) !void {
     file_user_h = file_user.handle;
 
     const sec_info = try winsec.GetSecurityInfo(
-            file_user_h,
-            winsec.SE_OBJECT_TYPE.FILE_OBJECT,
-            @intFromEnum(winsec.SECURITY_INFORMATION.OWNER),
+        file_user_h,
+        winsec.SE_OBJECT_TYPE.FILE_OBJECT,
+        @intFromEnum(winsec.SECURITY_INFORMATION.OWNER),
     );
 
-    std.debug.print("sec_info: {}\n", .{ sec_info });
+    std.debug.print("sec_info: {}\n", .{sec_info});
 
     // var account_buf: [100]
 

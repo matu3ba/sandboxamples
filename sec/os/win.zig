@@ -36,7 +36,7 @@ pub const ULARGE_INTEGER = u64;
 pub const ULONG = u32;
 pub const LONG = i32;
 pub const ULONGLONG = u64;
-pub const PSID = ?*opaque{};
+pub const PSID = ?*opaque {};
 pub const PSECURITY_DESCRIPTOR = ?*anyopaque;
 
 pub const SECURITY_ATTRIBUTES = extern struct {
@@ -72,7 +72,6 @@ pub const PROCESS_INFORMATION = extern struct {
     dwProcessId: DWORD,
     dwThreadId: DWORD,
 };
-
 
 pub const STARTUPINFOEXW = extern struct {
     lpStartupInfo: STARTUPINFOW,
@@ -119,37 +118,19 @@ pub const PROCESS_CREATION_FLAGS = enum(u32) {
 // zig fmt: on
 
 pub const PROCESS_MITIGATION_SYSTEM_CALL_DISABLE_POLICY = extern struct {
-    DUMMYUNIONNAME : extern union {
-        Flags : DWORD,
-        DUMMYSTRUCTNAME : packed struct {
-            DisallowWin32kSystemCalls : u1,
-            AuditDisallowWin32kSystemCalls : u1,
+    DUMMYUNIONNAME: extern union {
+        Flags: DWORD,
+        DUMMYSTRUCTNAME: packed struct {
+            DisallowWin32kSystemCalls: u1,
+            AuditDisallowWin32kSystemCalls: u1,
             DisallowFsctlSystemCalls: u1,
             AuditDisallowFsctlSystemCalls: u1,
-            ReservedFlags : u28,
+            ReservedFlags: u28,
         },
     },
 };
 
-pub const PROCESS_MITIGATION_POLICY = enum(c_int) {
-    ProcessDEPPolicy,
-    ProcessASLRPolicy,
-    ProcessDynamicCodePolicy,
-    ProcessStrictHandleCheckPolicy,
-    ProcessSystemCallDisablePolicy,
-    ProcessMitigationOptionsMask,
-    ProcessExtensionPointDisablePolicy,
-    ProcessControlFlowGuardPolicy,
-    ProcessSignaturePolicy,
-    ProcessFontDisablePolicy,
-    ProcessImageLoadPolicy,
-    ProcessSystemCallFilterPolicy,
-    ProcessPayloadRestrictionPolicy,
-    ProcessChildProcessPolicy,
-    ProcessSideChannelIsolationPolicy,
-    ProcessUserShadowStackPolicy,
-    MaxProcessMitigationPolicy
-};
+pub const PROCESS_MITIGATION_POLICY = enum(c_int) { ProcessDEPPolicy, ProcessASLRPolicy, ProcessDynamicCodePolicy, ProcessStrictHandleCheckPolicy, ProcessSystemCallDisablePolicy, ProcessMitigationOptionsMask, ProcessExtensionPointDisablePolicy, ProcessControlFlowGuardPolicy, ProcessSignaturePolicy, ProcessFontDisablePolicy, ProcessImageLoadPolicy, ProcessSystemCallFilterPolicy, ProcessPayloadRestrictionPolicy, ProcessChildProcessPolicy, ProcessSideChannelIsolationPolicy, ProcessUserShadowStackPolicy, MaxProcessMitigationPolicy };
 
 pub const GetProcessMitigationPolicyError = error{Unexpected};
 pub fn GetProcessMitigationPolicy(
@@ -168,7 +149,7 @@ pub fn GetProcessMitigationPolicy(
     }
 }
 
-pub const InitializeProcThreadAttributeListError = error{Unexpected, InsufficientBuffer};
+pub const InitializeProcThreadAttributeListError = error{ Unexpected, InsufficientBuffer };
 pub fn InitializeProcThreadAttributeList(
     lpAttributeList: ?LPPROC_THREAD_ATTRIBUTE_LIST,
     dwAttributeCount: u32,
@@ -194,7 +175,7 @@ pub fn DeleteProcThreadAttributeList(
     }
 }
 
-pub const UpdateProcThreadAttributeError = error{NoSpaceLeft, Unexpected};
+pub const UpdateProcThreadAttributeError = error{ NoSpaceLeft, Unexpected };
 pub fn UpdateProcThreadAttribute(
     lpAttributeList: ?LPPROC_THREAD_ATTRIBUTE_LIST,
     dwFlags: u32,
@@ -228,7 +209,6 @@ inline fn MAKELANGID(p: c_ushort, s: c_ushort) LANGID {
     return (s << 10) | p;
 }
 
-
 /// Call this when you made a windows DLL call or something that does SetLastError
 /// and you get an unexpected error.
 pub fn unexpectedError(err: Win32Error) std.os.UnexpectedError {
@@ -252,9 +232,9 @@ pub fn unexpectedError(err: Win32Error) std.os.UnexpectedError {
     return error.Unexpected;
 }
 
-const PROC_THREAD_ATTRIBUTE_NUMBER   = 0x0000FFFF;
-const PROC_THREAD_ATTRIBUTE_THREAD   = 0x00010000; // Attribute may be used with thread creation
-const PROC_THREAD_ATTRIBUTE_INPUT    = 0x00020000; // Attribute is input only
+const PROC_THREAD_ATTRIBUTE_NUMBER = 0x0000FFFF;
+const PROC_THREAD_ATTRIBUTE_THREAD = 0x00010000; // Attribute may be used with thread creation
+const PROC_THREAD_ATTRIBUTE_INPUT = 0x00020000; // Attribute is input only
 const PROC_THREAD_ATTRIBUTE_ADDITIVE = 0x00040000; // Attribute may be "accumulated," e.g. bitmasks, counters, etc.
 
 pub fn ProcThreadAttributeValue(
@@ -374,7 +354,6 @@ pub const PROCESS_CREATION_MITIGATION_POLICY_WIN32K_SYSTEM_CALL_DISABLE = struct
     pub const RESERVED   =        (0x00000003 << 28);
 };
 // zig fmt: on
-
 
 pub const GetHandleInformationError = error{Unexpected};
 
@@ -512,7 +491,7 @@ pub fn IsProcessInJob(
             else => |err| return unexpectedError(err),
         }
     }
-        return Result != 0;
+    return Result != 0;
 }
 
 pub const TerminateJobObjectError = error{Unexpected};
@@ -549,7 +528,6 @@ pub const PROCESS_ACCESS_RIGHTS = enum(u32) {
 };
 // zig fmt: on
 
-
 pub const OpenProcessError = error{
     AccessDenied,
     Unexpected,
@@ -567,7 +545,6 @@ pub fn OpenProcess(dwDesiredAccess: DWORD, bInheritHandle: bool, dwProcessId: DW
     }
     return res.?;
 }
-
 
 pub const EnumProcessModulesError = error{
     Unexpected,
@@ -670,7 +647,7 @@ pub const JobObjectInformationClass = enum(u32) {
     BasicLimitInformation = 2,
     BasicProcessIdList,
     BasicUIRestrictions,
-    SecurityLimitInformation = 5,  // deprecated
+    SecurityLimitInformation = 5, // deprecated
     EndOfJobTimeInformation,
     AssociateCompletionPortInformation,
     BasicAndIoAccountingInformation,
@@ -751,7 +728,7 @@ pub const TOKEN_ACCESS = enum(u32) {
 };
 // zig fmt: on
 
-pub const OpenProcessTokenError = error { Unexpected };
+pub const OpenProcessTokenError = error{Unexpected};
 
 pub fn OpenProcessToken(proc_h: HANDLE, want_access: u32) OpenProcessTokenError!HANDLE {
     var token_h: HANDLE = undefined;
@@ -815,7 +792,7 @@ pub const TokenInfo = enum(c_uint) {
     OriginatingProcessTrustLevel,
 };
 
-pub const GetTokenInformationError = error { Unexpected };
+pub const GetTokenInformationError = error{Unexpected};
 
 // TODO can we omit used_token_info_len and only return token_info?
 pub fn GetTokenInformation(
@@ -826,11 +803,11 @@ pub fn GetTokenInformation(
 ) GetTokenInformationError!DWORD {
     var used_token_info_len: DWORD = undefined;
     if (kernel32.GetTokenInformation(
-            token_h,
-            token_info_ty,
-            token_info,
-            token_info_len,
-            &used_token_info_len,
+        token_h,
+        token_info_ty,
+        token_info,
+        token_info_len,
+        &used_token_info_len,
     ) == 0) {
         switch (kernel32.GetLastError()) {
             else => |err| return unexpectedError(err),
@@ -923,7 +900,7 @@ pub const ACL = extern struct {
 //     return sec_info;
 // }
 
-pub const GetSecurityInfoError = error { Unexpected };
+pub const GetSecurityInfoError = error{Unexpected};
 
 pub const SecurityInfo = struct {
     sid_owner: ?*PSID,
