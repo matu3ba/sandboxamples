@@ -13,25 +13,27 @@ const process = std.process;
 const File = std.fs.File;
 const windows = os.windows;
 const linux = os.linux;
+const posix = std.posix;
 const mem = std.mem;
 const math = std.math;
 const debug = std.debug;
 const EnvMap = process.EnvMap;
 const maxInt = std.math.maxInt;
 const assert = std.debug.assert;
+const native_os = builtin.os.tag;
 
 pub const ChildProcess = struct {
-    pub const Id = switch (builtin.os.tag) {
+    pub const Id = switch (native_os) {
         .windows => windows.HANDLE,
         .wasi => void,
-        else => os.pid_t,
+        else => posix.pid_t,
     };
 
     /// Available after calling `spawn()`. This becomes `undefined` after calling `wait()`.
     /// On Windows this is the hProcess.
     /// On POSIX this is the pid.
     id: Id,
-    thread_handle: if (builtin.os.tag == .windows) windows.HANDLE else void,
+    thread_handle: if (native_os == .windows) windows.HANDLE else void,
 
     allocator: mem.Allocator,
 
@@ -51,10 +53,10 @@ pub const ChildProcess = struct {
     stderr_behavior: StdIo,
 
     /// Set to change the user id when spawning the child process.
-    uid: if (builtin.os.tag == .windows or builtin.os.tag == .wasi) void else ?os.uid_t,
+    uid: if (native_os == .windows or native_os == .wasi) void else ?posix.uid_t,
 
     /// Set to change the group id when spawning the child process.
-    gid: if (builtin.os.tag == .windows or builtin.os.tag == .wasi) void else ?os.gid_t,
+    gid: if (native_os == .windows or native_os == .wasi) void else ?posix.gid_t,
 
     /// Set to change the current working directory when spawning the child process.
     cwd: ?[]const u8,
@@ -63,7 +65,7 @@ pub const ChildProcess = struct {
     /// Once that is done, `cwd` will be deprecated in favor of this field.
     cwd_dir: ?fs.Dir = null,
 
-    err_pipe: ?if (builtin.os.tag == .windows) void else [2]os.fd_t,
+    err_pipe: ?if (native_os == .windows) void else [2]posix.fd_t,
 
     expand_arg0: Arg0Expand,
 
@@ -95,7 +97,7 @@ pub const ChildProcess = struct {
         /// Returns the peak resident set size of the child process, in bytes,
         /// if available.
         pub inline fn getMaxRss(rus: ResourceUsageStatistics) ?usize {
-            switch (builtin.os.tag) {
+            switch (native_os) {
                 .linux => {
                     if (rus.rusage) |ru| {
                         return @as(usize, @intCast(ru.maxrss)) * 1024;
@@ -122,14 +124,14 @@ pub const ChildProcess = struct {
             }
         }
 
-        const rusage_init = switch (builtin.os.tag) {
-            .linux, .macos, .ios => @as(?std.os.rusage, null),
+        const rusage_init = switch (native_os) {
+            .linux, .macos, .ios => @as(?posix.rusage, null),
             .windows => @as(?windows.VM_COUNTERS, null),
             else => {},
         };
     };
 
-    pub const Arg0Expand = os.Arg0Expand;
+    pub const Arg0Expand = posix.Arg0Expand;
 
     pub const SpawnError = error{
         OutOfMemory,
@@ -176,8 +178,8 @@ pub const ChildProcess = struct {
             .term = null,
             .env_map = null,
             .cwd = null,
-            .uid = if (builtin.os.tag == .windows or builtin.os.tag == .wasi) {} else null,
-            .gid = if (builtin.os.tag == .windows or builtin.os.tag == .wasi) {} else null,
+            .uid = if (native_os == .windows or native_os == .wasi) {} else null,
+            .gid = if (native_os == .windows or native_os == .wasi) {} else null,
             .stdin = null,
             .stdout = null,
             .stderr = null,
@@ -201,7 +203,7 @@ pub const ChildProcess = struct {
             @compileError("the target operating system cannot spawn processes");
         }
 
-        if (builtin.os.tag == .windows) {
+        if (native_os == .windows) {
             return self.spawnWindows();
         } else {
             return self.spawnPosix();
@@ -215,7 +217,7 @@ pub const ChildProcess = struct {
 
     /// Forcibly terminates child process and then cleans up all resources.
     pub fn kill(self: *ChildProcess) !Term {
-        if (builtin.os.tag == .windows) {
+        if (native_os == .windows) {
             return self.killWindows(1);
         } else {
             return self.killPosix();
@@ -250,7 +252,7 @@ pub const ChildProcess = struct {
             self.cleanupStreams();
             return term;
         }
-        os.kill(self.id, os.SIG.TERM) catch |err| switch (err) {
+        posix.kill(self.id, posix.SIG.TERM) catch |err| switch (err) {
             error.ProcessNotFound => return error.AlreadyTerminated,
             else => return err,
         };
@@ -260,7 +262,7 @@ pub const ChildProcess = struct {
 
     /// Blocks until child process terminates and then cleans up all resources.
     pub fn wait(self: *ChildProcess) SpawnError!Term {
-        const term = if (builtin.os.tag == .windows)
+        const term = if (native_os == .windows)
             try self.waitWindows()
         else
             try self.waitPosix();
@@ -327,7 +329,7 @@ pub const ChildProcess = struct {
         stderr.* = fifoToOwnedArrayList(poller.fifo(.stderr));
     }
 
-    pub const RunError = os.GetCwdError || os.ReadError || SpawnError || os.PollError || error{
+    pub const RunError = posix.GetCwdError || posix.ReadError || SpawnError || posix.PollError || error{
         StdoutStreamTooLong,
         StderrStreamTooLong,
     };
@@ -405,16 +407,16 @@ pub const ChildProcess = struct {
             self.resource_usage_statistics.rusage = try windows.GetProcessMemoryInfo(self.id);
         }
 
-        os.close(self.id);
-        os.close(self.thread_handle);
+        posix.close(self.id);
+        posix.close(self.thread_handle);
         self.cleanupStreams();
         return result;
     }
 
     fn waitUnwrapped(self: *ChildProcess) SpawnError!void {
-        const res: os.WaitPidResult = res: {
+        const res: posix.WaitPidResult = res: {
             if (self.request_resource_usage_statistics) {
-                switch (builtin.os.tag) {
+                switch (native_os) {
                     .linux, .macos, .ios => {
                         var ru: std.os.rusage = undefined;
                         // usage not super robust
@@ -456,7 +458,7 @@ pub const ChildProcess = struct {
         if (self.err_pipe) |err_pipe| {
             defer destroyPipe(err_pipe);
 
-            if (builtin.os.tag == .linux) {
+            if (native_os == .linux) {
                 var fd = [1]std.os.pollfd{std.os.pollfd{
                     .fd = err_pipe[0],
                     .events = std.os.POLL.IN,
@@ -537,7 +539,7 @@ pub const ChildProcess = struct {
         else
             undefined;
         defer {
-            if (any_ignore) os.close(dev_null_fd);
+            if (any_ignore) posix.close(dev_null_fd);
         }
 
         var arena_allocator = std.heap.ArenaAllocator.init(self.allocator);
@@ -575,7 +577,7 @@ pub const ChildProcess = struct {
         // This pipe is used to communicate errors between the time of fork
         // and execve from the child process to the parent process.
         const err_pipe = blk: {
-            if (builtin.os.tag == .linux) {
+            if (native_os == .linux) {
                 const fd = try os.eventfd(0, linux.EFD.CLOEXEC);
                 // There's no distinction between the readable and the writeable
                 // end with eventfd
@@ -589,40 +591,40 @@ pub const ChildProcess = struct {
         const pid_result = try os.fork();
         if (pid_result == 0) {
             // we are the child
-            setUpChildIo(self.stdin_behavior, stdin_pipe[0], os.STDIN_FILENO, dev_null_fd) catch |err| forkChildErrReport(err_pipe[1], err);
-            setUpChildIo(self.stdout_behavior, stdout_pipe[1], os.STDOUT_FILENO, dev_null_fd) catch |err| forkChildErrReport(err_pipe[1], err);
-            setUpChildIo(self.stderr_behavior, stderr_pipe[1], os.STDERR_FILENO, dev_null_fd) catch |err| forkChildErrReport(err_pipe[1], err);
+            setUpChildIo(self.stdin_behavior, stdin_pipe[0], posix.STDIN_FILENO, dev_null_fd) catch |err| forkChildErrReport(err_pipe[1], err);
+            setUpChildIo(self.stdout_behavior, stdout_pipe[1], posix.STDOUT_FILENO, dev_null_fd) catch |err| forkChildErrReport(err_pipe[1], err);
+            setUpChildIo(self.stderr_behavior, stderr_pipe[1], posix.STDERR_FILENO, dev_null_fd) catch |err| forkChildErrReport(err_pipe[1], err);
 
             if (self.stdin_behavior == .Pipe) {
-                os.close(stdin_pipe[0]);
-                os.close(stdin_pipe[1]);
+                posix.close(stdin_pipe[0]);
+                posix.close(stdin_pipe[1]);
             }
             if (self.stdout_behavior == .Pipe) {
-                os.close(stdout_pipe[0]);
-                os.close(stdout_pipe[1]);
+                posix.close(stdout_pipe[0]);
+                posix.close(stdout_pipe[1]);
             }
             if (self.stderr_behavior == .Pipe) {
-                os.close(stderr_pipe[0]);
-                os.close(stderr_pipe[1]);
+                posix.close(stderr_pipe[0]);
+                posix.close(stderr_pipe[1]);
             }
 
             if (self.cwd_dir) |cwd| {
-                os.fchdir(cwd.fd) catch |err| forkChildErrReport(err_pipe[1], err);
+                posix.fchdir(cwd.fd) catch |err| forkChildErrReport(err_pipe[1], err);
             } else if (self.cwd) |cwd| {
-                os.chdir(cwd) catch |err| forkChildErrReport(err_pipe[1], err);
+                posix.chdir(cwd) catch |err| forkChildErrReport(err_pipe[1], err);
             }
 
             if (self.gid) |gid| {
-                os.setregid(gid, gid) catch |err| forkChildErrReport(err_pipe[1], err);
+                posix.setregid(gid, gid) catch |err| forkChildErrReport(err_pipe[1], err);
             }
 
             if (self.uid) |uid| {
-                os.setreuid(uid, uid) catch |err| forkChildErrReport(err_pipe[1], err);
+                posix.setreuid(uid, uid) catch |err| forkChildErrReport(err_pipe[1], err);
             }
 
             const err = switch (self.expand_arg0) {
-                .expand => os.execvpeZ_expandArg0(.expand, argv_buf.ptr[0].?, argv_buf.ptr, envp),
-                .no_expand => os.execvpeZ_expandArg0(.no_expand, argv_buf.ptr[0].?, argv_buf.ptr, envp),
+                .expand => posix.execvpeZ_expandArg0(.expand, argv_buf.ptr[0].?, argv_buf.ptr, envp),
+                .no_expand => posix.execvpeZ_expandArg0(.no_expand, argv_buf.ptr[0].?, argv_buf.ptr, envp),
             };
             forkChildErrReport(err_pipe[1], err);
         }
@@ -650,13 +652,13 @@ pub const ChildProcess = struct {
         self.term = null;
 
         if (self.stdin_behavior == StdIo.Pipe) {
-            os.close(stdin_pipe[0]);
+            posix.close(stdin_pipe[0]);
         }
         if (self.stdout_behavior == StdIo.Pipe) {
-            os.close(stdout_pipe[1]);
+            posix.close(stdout_pipe[1]);
         }
         if (self.stderr_behavior == StdIo.Pipe) {
-            os.close(stderr_pipe[1]);
+            posix.close(stderr_pipe[1]);
         }
     }
 
@@ -690,7 +692,7 @@ pub const ChildProcess = struct {
         else
             undefined;
         defer {
-            if (any_ignore) os.close(nul_handle);
+            if (any_ignore) posix.close(nul_handle);
         }
         if (any_ignore) {
             try windows.SetHandleInformation(nul_handle, windows.HANDLE_FLAG_INHERIT, 0);
@@ -838,8 +840,8 @@ pub const ChildProcess = struct {
         defer self.allocator.free(cmd_line_w);
 
         run: {
-            const PATH: [:0]const u16 = std.os.getenvW(unicode.utf8ToUtf16LeStringLiteral("PATH")) orelse &[_:0]u16{};
-            const PATHEXT: [:0]const u16 = std.os.getenvW(unicode.utf8ToUtf16LeStringLiteral("PATHEXT")) orelse &[_:0]u16{};
+            const PATH: [:0]const u16 = std.process.getenvW(unicode.utf8ToUtf16LeStringLiteral("PATH")) orelse &[_:0]u16{};
+            const PATHEXT: [:0]const u16 = std.process.getenvW(unicode.utf8ToUtf16LeStringLiteral("PATHEXT")) orelse &[_:0]u16{};
 
             var app_buf = std.ArrayListUnmanaged(u16){};
             defer app_buf.deinit(self.allocator);
@@ -922,20 +924,20 @@ pub const ChildProcess = struct {
         self.term = null;
 
         if (self.stdin_behavior == StdIo.Pipe) {
-            os.close(g_hChildStd_IN_Rd.?);
+            posix.close(g_hChildStd_IN_Rd.?);
         }
         if (self.stderr_behavior == StdIo.Pipe) {
-            os.close(g_hChildStd_ERR_Wr.?);
+            posix.close(g_hChildStd_ERR_Wr.?);
         }
         if (self.stdout_behavior == StdIo.Pipe) {
-            os.close(g_hChildStd_OUT_Wr.?);
+            posix.close(g_hChildStd_OUT_Wr.?);
         }
     }
 
     fn setUpChildIo(stdio: StdIo, pipe_fd: i32, std_fileno: i32, dev_null_fd: i32) !void {
         switch (stdio) {
             .Pipe => try os.dup2(pipe_fd, std_fileno),
-            .Close => os.close(std_fileno),
+            .Close => posix.close(std_fileno),
             .Inherit => {},
             .Ignore => try os.dup2(dev_null_fd, std_fileno),
         }
@@ -1004,7 +1006,7 @@ fn windowsCreateProcessPathExt(
 
     // This 2048 is arbitrary, we just want it to be large enough to get multiple FILE_DIRECTORY_INFORMATION entries
     // returned per NtQueryDirectoryFile call.
-    var file_information_buf: [2048]u8 align(@alignOf(os.windows.FILE_DIRECTORY_INFORMATION)) = undefined;
+    var file_information_buf: [2048]u8 align(@alignOf(windows.FILE_DIRECTORY_INFORMATION)) = undefined;
     const file_info_maximum_single_entry_size = @sizeOf(windows.FILE_DIRECTORY_INFORMATION) + (windows.NAME_MAX * 2);
     if (file_information_buf.len < file_info_maximum_single_entry_size) {
         @compileError("file_information_buf must be large enough to contain at least one maximum size FILE_DIRECTORY_INFORMATION entry");
@@ -1244,7 +1246,7 @@ fn windowsCreateProcessSupportsExtension(ext: []const u16) ?CreateProcessSupport
     return null;
 }
 
-test "windowsCreateProcessSupportsExtension" {
+test windowsCreateProcessSupportsExtension {
     try std.testing.expectEqual(CreateProcessSupportedExtension.exe, windowsCreateProcessSupportsExtension(&[_]u16{ '.', 'e', 'X', 'e' }).?);
     try std.testing.expect(windowsCreateProcessSupportsExtension(&[_]u16{ '.', 'e', 'X', 'e', 'c' }) == null);
 }
@@ -1335,7 +1337,7 @@ pub fn argvToCommandLineWindows(
     return try unicode.wtf8ToWtf16LeAllocZ(allocator, buf.items);
 }
 
-test "argvToCommandLineWindows" {
+test argvToCommandLineWindows {
     const t = testArgvToCommandLineWindows;
 
     try t(&.{
@@ -1405,8 +1407,8 @@ fn testArgvToCommandLineWindows(argv: []const []const u8, expected_cmd_line: []c
 }
 
 fn windowsDestroyPipe(rd: ?windows.HANDLE, wr: ?windows.HANDLE) void {
-    if (rd) |h| os.close(h);
-    if (wr) |h| os.close(h);
+    if (rd) |h| posix.close(h);
+    if (wr) |h| posix.close(h);
 }
 
 fn windowsMakePipeIn(rd: *?windows.HANDLE, wr: *?windows.HANDLE, sattr: *const windows.SECURITY_ATTRIBUTES) !void {
@@ -1457,7 +1459,7 @@ fn windowsMakeAsyncPipe(rd: *?windows.HANDLE, wr: *?windows.HANDLE, sattr: *cons
             else => |err| return windows.unexpectedError(err),
         }
     }
-    errdefer os.close(read_handle);
+    errdefer posix.close(read_handle);
 
     var sattr_copy = sattr.*;
     const write_handle = windows.kernel32.CreateFileW(
@@ -1474,7 +1476,7 @@ fn windowsMakeAsyncPipe(rd: *?windows.HANDLE, wr: *?windows.HANDLE, sattr: *cons
             else => |err| return windows.unexpectedError(err),
         }
     }
-    errdefer os.close(write_handle);
+    errdefer posix.close(write_handle);
 
     try windows.SetHandleInformation(read_handle, windows.HANDLE_FLAG_INHERIT, 0);
 
@@ -1483,8 +1485,8 @@ fn windowsMakeAsyncPipe(rd: *?windows.HANDLE, wr: *?windows.HANDLE, sattr: *cons
 }
 
 fn destroyPipe(pipe: [2]os.fd_t) void {
-    os.close(pipe[0]);
-    if (pipe[0] != pipe[1]) os.close(pipe[1]);
+    posix.close(pipe[0]);
+    if (pipe[0] != pipe[1]) posix.close(pipe[1]);
 }
 
 // Child of fork calls this to report an error to the fork parent.
@@ -1569,7 +1571,7 @@ pub fn createNullDelimitedEnvMap(arena: mem.Allocator, env_map: *const EnvMap) !
     return envp_buf;
 }
 
-test "createNullDelimitedEnvMap" {
+test createNullDelimitedEnvMap {
     const testing = std.testing;
     const allocator = testing.allocator;
     var envmap = EnvMap.init(allocator);

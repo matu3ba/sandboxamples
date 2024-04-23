@@ -15,6 +15,28 @@ pub fn build(b: *std.Build) void {
     if (builtin.os.tag == .wasi) return;
     const test_step = b.step("test", "Run unit tests");
 
+    { // common
+        const child = b.addExecutable(.{
+            .name = "child_min",
+            .root_source_file = .{ .path = "test/common/child_min.zig" },
+            .optimize = optimize,
+            .target = target,
+        });
+        child.root_module.addImport("sec", sec);
+        const main = b.addExecutable(.{
+            .name = "main_min",
+            .root_source_file = .{ .path = "test/common/main_min.zig" },
+            .optimize = optimize,
+            .target = target,
+        });
+        main.root_module.addImport("sec", sec);
+
+        const r_step_min = b.addRunArtifact(main);
+        r_step_min.addArtifactArg(child);
+        r_step_min.expectExitCode(0);
+        test_step.dependOn(&r_step_min.step);
+    }
+
     if (builtin.os.tag == .windows) {
         const child = b.addExecutable(.{
             .name = "child_explicit_handle_inheritance",
