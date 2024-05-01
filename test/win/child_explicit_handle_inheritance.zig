@@ -1,7 +1,7 @@
 //! Descendent processes intended to be named "evildescendent" for checks.
 const std = @import("std");
 const sec = @import("sec");
-const ossec = sec.os;
+const posixsec = sec.posix;
 
 pub fn main() !void {
     var arena_state = std.heap.ArenaAllocator.init(std.heap.page_allocator);
@@ -22,11 +22,11 @@ fn run(allocator: std.mem.Allocator) !void {
     while (true) {
         var msg_buf: [100]u8 = undefined;
         const s_handle = args.next() orelse break;
-        const file_h = try ossec.stringToHandle(s_handle);
-        defer std.os.close(file_h);
-        const is_inheritable = try ossec.isInheritable(file_h);
+        const file_h = try posixsec.stringToHandle(s_handle);
+        defer std.posix.close(file_h);
+        const is_inheritable = try posixsec.isInheritable(file_h);
         std.debug.assert(is_inheritable);
-        try ossec.disableInheritance(file_h);
+        try posixsec.disableInheritance(file_h);
         var file = std.fs.File{ .handle = file_h };
         const file_wr = file.writer();
 

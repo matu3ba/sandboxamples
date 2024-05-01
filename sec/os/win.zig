@@ -6,6 +6,7 @@ const builtin = @import("builtin");
 const native_arch = builtin.cpu.arch;
 const LANG = @import("win/lang.zig");
 const SUBLANG = @import("win/sublang.zig");
+const UnexpectedError = std.posix.UnexpectedError;
 
 pub const kernel32 = @import("win/kernel32.zig");
 pub const advapi32 = @import("win/advapi32.zig");
@@ -132,7 +133,7 @@ pub const PROCESS_MITIGATION_SYSTEM_CALL_DISABLE_POLICY = extern struct {
 
 pub const PROCESS_MITIGATION_POLICY = enum(c_int) { ProcessDEPPolicy, ProcessASLRPolicy, ProcessDynamicCodePolicy, ProcessStrictHandleCheckPolicy, ProcessSystemCallDisablePolicy, ProcessMitigationOptionsMask, ProcessExtensionPointDisablePolicy, ProcessControlFlowGuardPolicy, ProcessSignaturePolicy, ProcessFontDisablePolicy, ProcessImageLoadPolicy, ProcessSystemCallFilterPolicy, ProcessPayloadRestrictionPolicy, ProcessChildProcessPolicy, ProcessSideChannelIsolationPolicy, ProcessUserShadowStackPolicy, MaxProcessMitigationPolicy };
 
-pub const GetProcessMitigationPolicyError = error{Unexpected};
+pub const GetProcessMitigationPolicyError = UnexpectedError;
 pub fn GetProcessMitigationPolicy(
     hProcess: HANDLE,
     MitigationPolicy: PROCESS_MITIGATION_POLICY,
@@ -149,7 +150,7 @@ pub fn GetProcessMitigationPolicy(
     }
 }
 
-pub const InitializeProcThreadAttributeListError = error{ Unexpected, InsufficientBuffer };
+pub const InitializeProcThreadAttributeListError = error{InsufficientBuffer} || UnexpectedError;
 pub fn InitializeProcThreadAttributeList(
     lpAttributeList: ?LPPROC_THREAD_ATTRIBUTE_LIST,
     dwAttributeCount: u32,
@@ -164,7 +165,7 @@ pub fn InitializeProcThreadAttributeList(
     }
 }
 
-pub const DeleteProcThreadAttributeListError = error{Unexpected};
+pub const DeleteProcThreadAttributeListError = UnexpectedError;
 pub fn DeleteProcThreadAttributeList(
     lpAttributeList: ?LPPROC_THREAD_ATTRIBUTE_LIST,
 ) DeleteProcThreadAttributeListError!void {
@@ -211,8 +212,8 @@ inline fn MAKELANGID(p: c_ushort, s: c_ushort) LANGID {
 
 /// Call this when you made a windows DLL call or something that does SetLastError
 /// and you get an unexpected error.
-pub fn unexpectedError(err: Win32Error) std.os.UnexpectedError {
-    if (std.os.unexpected_error_tracing) {
+pub fn unexpectedError(err: Win32Error) UnexpectedError {
+    if (std.posix.unexpected_error_tracing) {
         // 614 is the length of the longest windows error description
         var buf_wstr: [614]WCHAR = undefined;
         var buf_utf8: [614]u8 = undefined;
@@ -355,7 +356,7 @@ pub const PROCESS_CREATION_MITIGATION_POLICY_WIN32K_SYSTEM_CALL_DISABLE = struct
 };
 // zig fmt: on
 
-pub const GetHandleInformationError = error{Unexpected};
+pub const GetHandleInformationError = UnexpectedError;
 
 pub fn GetHandleInformation(h: HANDLE, flags: *DWORD) GetHandleInformationError!void {
     if (kernel32.GetHandleInformation(h, flags) == 0) {
@@ -464,7 +465,7 @@ pub fn CreateJobObject(lpJobAttributes: ?*SECURITY_ATTRIBUTES, lpName: ?LPCWSTR)
     return kernel32.CreateJobObjectW(lpJobAttributes, lpName);
 }
 
-pub const SetInformationJobObjectError = error{Unexpected};
+pub const SetInformationJobObjectError = UnexpectedError;
 
 pub fn SetInformationJobObject(
     hJob: HANDLE,
@@ -479,7 +480,7 @@ pub fn SetInformationJobObject(
     }
 }
 
-pub const IsProcessInJobError = error{Unexpected};
+pub const IsProcessInJobError = UnexpectedError;
 
 pub fn IsProcessInJob(
     hProcess: HANDLE,
@@ -494,7 +495,7 @@ pub fn IsProcessInJob(
     return Result != 0;
 }
 
-pub const TerminateJobObjectError = error{Unexpected};
+pub const TerminateJobObjectError = UnexpectedError;
 
 /// uExitCode should be smaller than than 1223. As example, the process may
 /// return (AUTODATASEG_EXCEEDS_64k/199) if you use (CANCELLED/1223).
@@ -560,7 +561,7 @@ pub fn EnumProcessModules(hProcess: HANDLE, lphModule: *HMODULE, cb: DWORD, lpcb
     }
 }
 
-pub const EnumProcessesError = error{Unexpected};
+pub const EnumProcessesError = UnexpectedError;
 
 pub fn EnumProcesses(lpidProcess: [*]DWORD, cb: DWORD, lpcbNeeded: *DWORD) EnumProcessesError!void {
     if (kernel32.K32EnumProcesses(lpidProcess, cb, lpcbNeeded) == 0) {
@@ -728,7 +729,7 @@ pub const TOKEN_ACCESS = enum(u32) {
 };
 // zig fmt: on
 
-pub const OpenProcessTokenError = error{Unexpected};
+pub const OpenProcessTokenError = UnexpectedError;
 
 pub fn OpenProcessToken(proc_h: HANDLE, want_access: u32) OpenProcessTokenError!HANDLE {
     var token_h: HANDLE = undefined;
@@ -792,7 +793,7 @@ pub const TokenInfo = enum(c_uint) {
     OriginatingProcessTrustLevel,
 };
 
-pub const GetTokenInformationError = error{Unexpected};
+pub const GetTokenInformationError = UnexpectedError;
 
 // TODO can we omit used_token_info_len and only return token_info?
 pub fn GetTokenInformation(
@@ -900,7 +901,7 @@ pub const ACL = extern struct {
 //     return sec_info;
 // }
 
-pub const GetSecurityInfoError = error{Unexpected};
+pub const GetSecurityInfoError = UnexpectedError;
 
 pub const SecurityInfo = struct {
     sid_owner: ?*PSID,

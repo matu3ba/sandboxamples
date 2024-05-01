@@ -27,7 +27,6 @@ const std = @import("std");
 const sec = @import("sec");
 const winsec = sec.os.win;
 const childsec = sec.child;
-const ossec = sec.os;
 
 pub fn main() !void {
     var gpa_state = std.heap.GeneralPurposeAllocator(.{ .safety = true }){};
@@ -50,7 +49,7 @@ fn hasProcessPrefix(pid: u32, prefix: []const u16) !bool {
         error.AccessDenied => return false,
         else => return true,
     };
-    defer std.os.close(h_proc);
+    defer std.posix.close(h_proc);
     var h_mod: winsec.HMODULE = undefined;
     var cbNeeded: winsec.DWORD = undefined;
 
@@ -93,7 +92,7 @@ fn behavior(gpa: std.mem.Allocator) !void {
 
     // create job object and set information
     const h_jo = winsec.CreateJobObject(null, null);
-    defer std.os.close(h_jo);
+    defer std.posix.close(h_jo);
     var jo_eli = std.mem.zeroes(winsec.JOBOBJECT_EXTENDED_LIMIT_INFORMATION);
     jo_eli.BasicLimitInformation.LimitFlags =
         @intFromEnum(winsec.JOB_OBJECT_LIMIT.KILL_ON_JOB_CLOSE) | @intFromEnum(winsec.JOB_OBJECT_LIMIT.JOB_MEMORY) | @intFromEnum(winsec.JOB_OBJECT_LIMIT.ACTIVE_PROCESS) | @intFromEnum(winsec.JOB_OBJECT_LIMIT.JOB_TIME);

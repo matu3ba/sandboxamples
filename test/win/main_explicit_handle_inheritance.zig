@@ -13,7 +13,7 @@ const std = @import("std");
 const sec = @import("sec");
 const winsec = sec.os.win;
 const childsec = sec.child;
-const ossec = sec.os;
+const posixsec = sec.posix;
 
 const NUM_FILES = 100;
 
@@ -46,8 +46,8 @@ fn behavior(gpa: std.mem.Allocator) !void {
             std.os.windows.CloseHandle(file_h);
 
         for (file_hs) |file_h| {
-            if (try ossec.isInheritable(file_h) == true) return error.TestError;
-            try ossec.enableInheritance(file_h);
+            if (try posixsec.isInheritable(file_h) == true) return error.TestError;
+            try posixsec.enableInheritance(file_h);
         }
 
         var attrs: winsec.LPPROC_THREAD_ATTRIBUTE_LIST = undefined;
@@ -77,14 +77,14 @@ fn behavior(gpa: std.mem.Allocator) !void {
         _ = it.next() orelse unreachable; // skip binary name
         const child_path = it.next() orelse unreachable;
 
-        const T = [NUM_FILES + 1][ossec.handleCharSize]u8;
+        const T = [NUM_FILES + 1][posixsec.handleCharSize]u8;
         var buf_handles_s = std.mem.zeroes(T);
         var handles_s: [NUM_FILES + 1][]const u8 = undefined;
         try std.testing.expectEqual(handles_s.len, file_hs.len + 1);
         try std.testing.expectEqual(handles_s.len, buf_handles_s.len);
         handles_s[0] = child_path[0..child_path.len];
         for (file_hs, 0..) |file_h, i| {
-            handles_s[i + 1] = try ossec.handleToString(file_h, buf_handles_s[i + 1][0..]);
+            handles_s[i + 1] = try posixsec.handleToString(file_h, buf_handles_s[i + 1][0..]);
         }
 
         var child = childsec.ChildProcess.init(&handles_s, gpa);

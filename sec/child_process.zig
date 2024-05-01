@@ -8,11 +8,10 @@ const builtin = @import("builtin");
 const unicode = std.unicode;
 const io = std.io;
 const fs = std.fs;
-const os = std.os;
 const process = std.process;
 const File = std.fs.File;
-const windows = os.windows;
-const linux = os.linux;
+const windows = std.os.windows;
+const linux = std.os.linux;
 const posix = std.posix;
 const mem = std.mem;
 const math = std.math;
@@ -146,9 +145,9 @@ pub const ChildProcess = struct {
         /// Windows-only. `cwd` was provided, but the path did not exist when spawning the child process.
         CurrentWorkingDirectoryUnlinked,
     } ||
-        os.ExecveError ||
-        os.SetIdError ||
-        os.ChangeCurDirError ||
+        posix.ExecveError ||
+        posix.SetIdError ||
+        posix.ChangeCurDirError ||
         windows.CreateProcessError ||
         windows.GetProcessMemoryInfoError ||
         windows.WaitForSingleObjectError;
@@ -418,9 +417,9 @@ pub const ChildProcess = struct {
             if (self.request_resource_usage_statistics) {
                 switch (native_os) {
                     .linux, .macos, .ios => {
-                        var ru: std.os.rusage = undefined;
+                        var ru: std.posix.rusage = undefined;
                         // usage not super robust
-                        const res = os.wait4(self.id, 0, &ru);
+                        const res = posix.wait4(self.id, 0, &ru);
                         self.resource_usage_statistics.rusage = ru;
                         break :res res;
                     },
@@ -428,7 +427,7 @@ pub const ChildProcess = struct {
                 }
             }
 
-            break :res os.waitpid(self.id, 0);
+            break :res posix.waitpid(self.id, 0);
         };
         const status = res.status;
         self.cleanupStreams();
@@ -459,19 +458,19 @@ pub const ChildProcess = struct {
             defer destroyPipe(err_pipe);
 
             if (native_os == .linux) {
-                var fd = [1]std.os.pollfd{std.os.pollfd{
+                var fd = [1]std.posix.pollfd{std.posix.pollfd{
                     .fd = err_pipe[0],
-                    .events = std.os.POLL.IN,
+                    .events = std.posix.POLL.IN,
                     .revents = undefined,
                 }};
 
                 // Check if the eventfd buffer stores a non-zero value by polling
                 // it, that's the error code returned by the child process.
-                _ = std.os.poll(&fd, 0) catch unreachable;
+                _ = std.posix.poll(&fd, 0) catch unreachable;
 
                 // According to eventfd(2) the descriptor is readable if the counter
                 // has a value greater than 0
-                if ((fd[0].revents & std.os.POLL.IN) != 0) {
+                if ((fd[0].revents & std.posix.POLL.IN) != 0) {
                     const err_int = try readIntFd(err_pipe[0]);
                     return @as(SpawnError, @errorCast(@errorFromInt(err_int)));
                 }
@@ -495,36 +494,36 @@ pub const ChildProcess = struct {
     }
 
     fn statusToTerm(status: u32) Term {
-        return if (os.W.IFEXITED(status))
-            Term{ .Exited = os.W.EXITSTATUS(status) }
-        else if (os.W.IFSIGNALED(status))
-            Term{ .Signal = os.W.TERMSIG(status) }
-        else if (os.W.IFSTOPPED(status))
-            Term{ .Stopped = os.W.STOPSIG(status) }
+        return if (posix.W.IFEXITED(status))
+            Term{ .Exited = posix.W.EXITSTATUS(status) }
+        else if (posix.W.IFSIGNALED(status))
+            Term{ .Signal = posix.W.TERMSIG(status) }
+        else if (posix.W.IFSTOPPED(status))
+            Term{ .Stopped = posix.W.STOPSIG(status) }
         else
             Term{ .Unknown = status };
     }
 
     fn spawnPosix(self: *ChildProcess) SpawnError!void {
-        const pipe_flags: os.O = .{};
-        const stdin_pipe = if (self.stdin_behavior == StdIo.Pipe) try os.pipe2(pipe_flags) else undefined;
+        const pipe_flags: posix.O = .{};
+        const stdin_pipe = if (self.stdin_behavior == StdIo.Pipe) try posix.pipe2(pipe_flags) else undefined;
         errdefer if (self.stdin_behavior == StdIo.Pipe) {
             destroyPipe(stdin_pipe);
         };
 
-        const stdout_pipe = if (self.stdout_behavior == StdIo.Pipe) try os.pipe2(pipe_flags) else undefined;
+        const stdout_pipe = if (self.stdout_behavior == StdIo.Pipe) try posix.pipe2(pipe_flags) else undefined;
         errdefer if (self.stdout_behavior == StdIo.Pipe) {
             destroyPipe(stdout_pipe);
         };
 
-        const stderr_pipe = if (self.stderr_behavior == StdIo.Pipe) try os.pipe2(pipe_flags) else undefined;
+        const stderr_pipe = if (self.stderr_behavior == StdIo.Pipe) try posix.pipe2(pipe_flags) else undefined;
         errdefer if (self.stderr_behavior == StdIo.Pipe) {
             destroyPipe(stderr_pipe);
         };
 
         const any_ignore = (self.stdin_behavior == StdIo.Ignore or self.stdout_behavior == StdIo.Ignore or self.stderr_behavior == StdIo.Ignore);
         const dev_null_fd = if (any_ignore)
-            os.openZ("/dev/null", .{ .ACCMODE = .RDWR }, 0) catch |err| switch (err) {
+            posix.openZ("/dev/null", .{ .ACCMODE = .RDWR }, 0) catch |err| switch (err) {
                 error.PathAlreadyExists => unreachable,
                 error.NoSpaceLeft => unreachable,
                 error.FileTooBig => unreachable,
@@ -566,8 +565,8 @@ pub const ChildProcess = struct {
                 break :m std.c.environ;
             } else if (builtin.output_mode == .Exe) {
                 // Then we have Zig start code and this works.
-                // TODO type-safety for null-termination of `os.environ`.
-                break :m @as([*:null]const ?[*:0]const u8, @ptrCast(os.environ.ptr));
+                // TODO type-safety for null-termination of `posix.environ`.
+                break :m @as([*:null]const ?[*:0]const u8, @ptrCast(posix.environ.ptr));
             } else {
                 // TODO come up with a solution for this.
                 @compileError("missing std lib enhancement: ChildProcess implementation has no way to collect the environment variables to forward to the child process");
@@ -578,17 +577,17 @@ pub const ChildProcess = struct {
         // and execve from the child process to the parent process.
         const err_pipe = blk: {
             if (native_os == .linux) {
-                const fd = try os.eventfd(0, linux.EFD.CLOEXEC);
+                const fd = try posix.eventfd(0, linux.EFD.CLOEXEC);
                 // There's no distinction between the readable and the writeable
                 // end with eventfd
-                break :blk [2]os.fd_t{ fd, fd };
+                break :blk [2]posix.fd_t{ fd, fd };
             } else {
-                break :blk try os.pipe2(.{ .CLOEXEC = true });
+                break :blk try posix.pipe2(.{ .CLOEXEC = true });
             }
         };
         errdefer destroyPipe(err_pipe);
 
-        const pid_result = try os.fork();
+        const pid_result = try posix.fork();
         if (pid_result == 0) {
             // we are the child
             setUpChildIo(self.stdin_behavior, stdin_pipe[0], posix.STDIN_FILENO, dev_null_fd) catch |err| forkChildErrReport(err_pipe[1], err);
@@ -663,7 +662,7 @@ pub const ChildProcess = struct {
     }
 
     fn spawnWindows(self: *ChildProcess) SpawnError!void {
-        const saAttr = windows.SECURITY_ATTRIBUTES{
+        var saAttr = windows.SECURITY_ATTRIBUTES{
             .nLength = @sizeOf(windows.SECURITY_ATTRIBUTES),
             .bInheritHandle = windows.TRUE,
             .lpSecurityDescriptor = null,
@@ -936,10 +935,10 @@ pub const ChildProcess = struct {
 
     fn setUpChildIo(stdio: StdIo, pipe_fd: i32, std_fileno: i32, dev_null_fd: i32) !void {
         switch (stdio) {
-            .Pipe => try os.dup2(pipe_fd, std_fileno),
+            .Pipe => try posix.dup2(pipe_fd, std_fileno),
             .Close => posix.close(std_fileno),
             .Inherit => {},
-            .Ignore => try os.dup2(dev_null_fd, std_fileno),
+            .Ignore => try posix.dup2(dev_null_fd, std_fileno),
         }
     }
 };
@@ -1159,7 +1158,7 @@ fn windowsCreateProcess(app_name: [*:0]u16, cmd_line: [*:0]u16, envp_ptr: ?[*]u1
     // work with either Ansi or Unicode.
     // * The environment variables can still be inherited from parent process,
     //   if set to NULL
-    // * The OS can for an unspecified environment block not figure out,
+    // * The posix can for an unspecified environment block not figure out,
     //   if it is Unicode or ANSI.
     // * Applications may break without specification of the environment variable
     //   due to inability of Windows to check (+translate) the character encodings.
@@ -1436,7 +1435,7 @@ fn windowsMakeAsyncPipe(rd: *?windows.HANDLE, wr: *?windows.HANDLE, sattr: *cons
         const pipe_path = std.fmt.bufPrintZ(
             &tmp_buf,
             "\\\\.\\pipe\\zig-childprocess-{d}-{d}",
-            .{ windows.kernel32.GetCurrentProcessId(), pipe_name_counter.fetchAdd(1, .Monotonic) },
+            .{ windows.kernel32.GetCurrentProcessId(), pipe_name_counter.fetchAdd(1, .monotonic) },
         ) catch unreachable;
         const len = std.unicode.wtf8ToWtf16Le(&tmp_bufw, pipe_path) catch unreachable;
         tmp_bufw[len] = 0;
@@ -1484,7 +1483,7 @@ fn windowsMakeAsyncPipe(rd: *?windows.HANDLE, wr: *?windows.HANDLE, sattr: *cons
     wr.* = write_handle;
 }
 
-fn destroyPipe(pipe: [2]os.fd_t) void {
+fn destroyPipe(pipe: [2]posix.fd_t) void {
     posix.close(pipe[0]);
     if (pipe[0] != pipe[1]) posix.close(pipe[1]);
 }
@@ -1501,7 +1500,7 @@ fn forkChildErrReport(fd: i32, err: ChildProcess.SpawnError) noreturn {
         // The _exit(2) function does nothing but make the exit syscall, unlike exit(3)
         std.c._exit(1);
     }
-    os.exit(1);
+    posix.exit(1);
 }
 
 const ErrInt = std.meta.Int(.unsigned, @sizeOf(anyerror) * 8);
