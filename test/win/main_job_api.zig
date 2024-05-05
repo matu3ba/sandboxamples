@@ -177,7 +177,7 @@ fn behavior(gpa: std.mem.Allocator) !void {
             @panic("broken");
         };
 
-        if (jo_basic_info.ActiveProcesses == 0 and jo_basic_procidlist.NumberOfProcessIdsInList) break;
+        if (jo_basic_info.ActiveProcesses == 0 and jo_basic_procidlist.NumberOfProcessIdsInList == 0) break;
         std.time.sleep(1_000 * std.time.ns_per_ms);
     }
 
