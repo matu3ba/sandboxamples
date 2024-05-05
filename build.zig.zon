@@ -14,5 +14,6 @@
         "sec/os/win/lang.zig",
         "sec/os/win/sublang.zig",
         "sec/os/win/win32error.zig",
+        "sec/posix.zig",
     },
 }

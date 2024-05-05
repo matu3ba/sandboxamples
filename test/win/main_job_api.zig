@@ -1,9 +1,14 @@
 //! Test killing child kills all 6 descendants based on
+//! * https://learn.microsoft.com/en-us/windows/win32/procthread/job-objects
 //! * https://devblogs.microsoft.com/oldnewthing/20131209-00/?p=2433
 //! * https://devblogs.microsoft.com/oldnewthing/20230209-00/?p=107812
 //! * https://learn.microsoft.com/en-us/windows/win32/api/jobapi2/nf-jobapi2-setinformationjobobject
 //! * https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-jobobject_basic_limit_information
 //! * https://learn.microsoft.com/en-us/windows/win32/api/jobapi2/nf-jobapi2-freememoryjobobject
+//! * https://devblogs.microsoft.com/oldnewthing/20130405-00/?p=4743
+//! * https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-jobobject_associate_completion_port?redirectedfrom=MSDN
+//! * https://learn.microsoft.com/en-us/windows/win32/api/jobapi2/nf-jobapi2-terminatejobobject
+//! * https://learn.microsoft.com/en-us/windows/win32/procthread/terminating-a-process
 //! This includes setting common process limits.
 //! - 0. basic test
 //! - 1. higher process spawn api to remain alive
@@ -14,11 +19,12 @@
 //! - 5. exhaust kernel memory via pipe buffer usage
 //! - 6. request admin privileges from user
 //! Descendent processes intended to be named "evildescendent" for checks.
+//! Job completion ports for signaling, that descant processes were terminated.
 //!
 //! Validate running still running processes with
 //! * https://learn.microsoft.com/de-de/windows/win32/psapi/enumerating-all-processes?redirectedfrom=MSDN
 
-// TODO
+// ideas
 // - replace use cases of FreeMemoryJobObject
 // - atomic guarantees of Windows regarding system process overview?
 // - trace process spawn via etw?
@@ -132,7 +138,6 @@ fn behavior(gpa: std.mem.Allocator) !void {
     // CANCELLED = 1223 should be in u32, but we get then error code 199 by windows
     // @intFromEnum(winsec.Win32Error.CANCELLED);
     const expected_exit_code: u32 = 1;
-    //
     std.debug.assert(expected_exit_code > 0);
 
     { // alive subprocesses block
@@ -140,7 +145,10 @@ fn behavior(gpa: std.mem.Allocator) !void {
         const isproc_injob = try winsec.IsProcessInJob(child.id, h_jo);
         try std.testing.expectEqual(isproc_injob, true);
         // kill descendant processes in all cases
-        defer winsec.TerminateJobObject(h_jo, expected_exit_code) catch {}; // does this error code make sense?
+        defer winsec.TerminateJobObject(h_jo, expected_exit_code) catch {};
+        // TODO https://github.com/matu3ba/sandboxamples/issues/9
+        // wait for processes to be terminated with IO completion port
+        // design flaw: can not reliably wait for termination of process tree
 
         // some work, supervision, forward debugging etc
     }
