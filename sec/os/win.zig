@@ -696,6 +696,69 @@ pub const JobObjectInformationClass = enum(u32) {
     _,
 };
 
+pub const JOBOBJECT_BASIC_ACCOUNTING_INFORMATION = extern struct {
+    TotalUserTime: LARGE_INTEGER,
+    TotalKernelTime: LARGE_INTEGER,
+    ThisPeriodTotalUserTime: LARGE_INTEGER,
+    ThisPeriodTotalKernelTime: LARGE_INTEGER,
+    TotalPageFaultCount: DWORD,
+    TotalProcesses: DWORD,
+    ActiveProcesses: DWORD,
+    TotalTerminatedProcesses: DWORD,
+};
+
+pub const JOBOBJECT_BASIC_PROCESS_ID_LIST = extern struct {
+    NumberOfAssignedProcesses: DWORD,
+    NumberOfProcessIdsInList: DWORD,
+    ProcessId: [*]SIZE_T,
+};
+
+pub const QueryInformationJobObjectError = UnexpectedError;
+
+pub fn QueryInformationJobObject(
+    hJob: HANDLE,
+    jo_infocl: JobObjectInformationClass,
+    lpJobObjectInformation: ?LPVOID,
+    cbJobObjectInformationLength: DWORD,
+    lpReturnLength: ?*DWORD,
+) QueryInformationJobObjectError!void {
+    if (kernel32.QueryInformationJobObject(
+        hJob,
+        jo_infocl,
+        lpJobObjectInformation,
+        cbJobObjectInformationLength,
+        lpReturnLength,
+    ) == 0) {
+        switch (kernel32.GetLastError()) {
+            else => |err| return unexpectedError(err),
+        }
+    }
+}
+
+/// Returns Process ids of active processes
+pub fn QueryInformationJobObject_ProcIdList(
+    hJob: HANDLE,
+    lpJobObjectInformation: ?LPVOID,
+    cbJobObjectInformationLength: DWORD,
+) QueryInformationJobObjectError!*align(1) JOBOBJECT_BASIC_PROCESS_ID_LIST {
+    var lpReturnLength: DWORD = undefined;
+    if (kernel32.QueryInformationJobObject(
+        hJob,
+        JobObjectInformationClass.BasicProcessIdList,
+        lpJobObjectInformation,
+        cbJobObjectInformationLength,
+        &lpReturnLength,
+    ) == 0) {
+        switch (kernel32.GetLastError()) {
+            else => |err| return unexpectedError(err),
+        }
+    }
+    // TODO FIXME
+
+    if (lpReturnLength < @sizeOf(@TypeOf(DWORD)) + @sizeOf(@TypeOf(DWORD))) @panic("got invalid size from kernel");
+    return @as(*align(1) JOBOBJECT_BASIC_PROCESS_ID_LIST, @alignCast(@ptrCast(lpJobObjectInformation)));
+}
+
 /// Returns pseudo-handle to current process. No need to close this handle.
 pub fn GetCurrentProcess() HANDLE {
     return kernel32.GetCurrentProcess();
@@ -867,39 +930,6 @@ pub const ACL = extern struct {
     AceCount: WORD,
     Sbz2: WORD,
 };
-
-// pub const SecurityInfo = struct {
-//     ppsidOwner: PSID,
-//     ppsidGroup: PSID,
-//     ppDacl: *ACL,
-//     ppSacl: *ACL,
-//     ppSecurityDescriptor: PSECURITY_DESCRIPTOR,
-// };
-//
-// pub const GetSecurityInfoError = error { Unexpected };
-//
-// pub fn GetSecurityInfo(
-//     handle: HANDLE,
-//     object_ty: SE_OBJECT_TYPE,
-//     sec_info_select: SECURITY_INFORMATION,
-// ) GetSecurityInfoError!SecurityInfo {
-//     var sec_info: SecurityInfo = undefined;
-//     if (kernel32.GetSecurityInfo(
-//         handle,
-//         object_ty,
-//         sec_info_select,
-//         &sec_info.ppsidOwner,
-//         &sec_info.ppsidGroup,
-//         &sec_info.ppDacl,
-//         &sec_info.ppSacl,
-//         &sec_info.ppSecurityDescriptor,
-//     ) != 0) {
-//         switch (kernel32.GetLastError()) {
-//             else => |err| return unexpectedError(err),
-//         }
-//     }
-//     return sec_info;
-// }
 
 pub const GetSecurityInfoError = UnexpectedError;
 

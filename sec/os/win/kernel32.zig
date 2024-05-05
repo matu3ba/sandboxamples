@@ -58,6 +58,13 @@ pub extern "kernel32" fn SetInformationJobObject(
 ) callconv(win.WINAPI) win.BOOL;
 pub extern "kernel32" fn IsProcessInJob(ProcessHandle: win.HANDLE, JobHandle: win.HANDLE, Result: *win.BOOL) callconv(win.WINAPI) win.BOOL;
 pub extern "kernel32" fn TerminateJobObject(hJob: win.HANDLE, uExitCode: u32) callconv(win.WINAPI) win.BOOL;
+pub extern "kernel32" fn QueryInformationJobObject(
+    hJob: win.HANDLE,
+    jo_infocl: win.JobObjectInformationClass,
+    lpJobObjectInformation: ?win.LPVOID,
+    cbJobObjectInformationLength: win.DWORD,
+    lpReturnLength: ?*win.DWORD,
+) callconv(win.WINAPI) win.BOOL;
 
 pub extern "kernel32" fn GetCurrentProcess() callconv(win.WINAPI) win.HANDLE;
 pub extern "kernel32" fn OpenProcessToken(proc_h: win.HANDLE, want_access: u32, token_h: *win.HANDLE) callconv(win.WINAPI) win.BOOL;

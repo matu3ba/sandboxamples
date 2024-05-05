@@ -18,7 +18,7 @@ pub fn main() !void {
 fn behavior(gpa: std.mem.Allocator) !void {
     var it = try std.process.argsWithAllocator(gpa);
     defer it.deinit();
-    const child_path = it.next() orelse unreachable;
+    const child_path = it.next() orelse @panic("unreachable");
     const cli_number = it.next() orelse @panic("missing number for self spawn");
     const number = try std.fmt.parseUnsigned(u16, cli_number, 10);
 

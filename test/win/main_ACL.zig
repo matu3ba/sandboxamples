@@ -108,19 +108,6 @@ fn behavior(gpa: std.mem.Allocator) !void {
 
     // var account_buf: [100]
 
-    // const sec_info = try winsec.GetSecurityInfo(
-    //     file_user_h.?,
-    //     winsec.SE_OBJECT_TYPE.FILE_OBJECT,
-    //     winsec.SECURITY_INFORMATION.DACL,
-    // );
-    // std.debug.print("sec_info: owner {*} group {*} dacl {*} sacl {*} secdescr {*}\n", .{
-    //     sec_info.ppsidOwner.?,
-    //     sec_info.ppsidGroup.?,
-    //     sec_info.ppDacl.?,
-    //     sec_info.ppSacl.?,
-    //     sec_info.ppSecurityDescriptor.?,
-    // });
-    // _ = sec_info;
     // GetExplicitEntriesFromAcl
     // Major footgun on setting security permissions.
     // https://stackoverflow.com/questions/35227184/what-is-the-counterpart-to-the-getexplicitentriesfromacl-win32-api-function

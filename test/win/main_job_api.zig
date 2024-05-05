@@ -145,10 +145,42 @@ fn behavior(gpa: std.mem.Allocator) !void {
         const isproc_injob = try winsec.IsProcessInJob(child.id, h_jo);
         try std.testing.expectEqual(isproc_injob, true);
         // kill descendant processes in all cases
-        defer winsec.TerminateJobObject(h_jo, expected_exit_code) catch {};
-        // TODO https://github.com/matu3ba/sandboxamples/issues/9
-        // wait for processes to be terminated with IO completion port
-        // design flaw: can not reliably wait for termination of process tree
+        defer winsec.TerminateJobObject(h_jo, expected_exit_code) catch {
+            @panic("fatal error");
+        };
+
+        defer { // wait until terminated
+            var buf_jo_basic_procidlist: [500]u8 = undefined;
+            var jo_basic_info: winsec.JOBOBJECT_BASIC_ACCOUNTING_INFORMATION = std.mem.zeroes(winsec.JOBOBJECT_BASIC_ACCOUNTING_INFORMATION);
+            // I/O completion ports may drop data leading to infinite loop, so use
+            // polling with QueryInformationJobObject
+            while (true) {
+                const jo_basic_procidlist = winsec.QueryInformationJobObject_ProcIdList(
+                    h_jo,
+                    &buf_jo_basic_procidlist,
+                    @intCast(buf_jo_basic_procidlist.len),
+                ) catch {
+                    @panic("broken");
+                };
+
+                winsec.QueryInformationJobObject(
+                    h_jo,
+                    winsec.JobObjectInformationClass.BasicAccountingInformation,
+                    &jo_basic_info,
+                    @sizeOf(@TypeOf(jo_basic_info)),
+                    null,
+                ) catch {
+                    @panic("broken");
+                };
+
+                std.time.sleep(std.time.ns_per_ms);
+                const stdout_wr = std.io.getStdOut().writer();
+                stdout_wr.print("active processes {d}\n", .{jo_basic_info.ActiveProcesses}) catch @panic("unable to write stdout");
+                stdout_wr.print("jo_basic_procidlist.NumberOfProcessIdsInList: {d}\n", .{jo_basic_procidlist.NumberOfProcessIdsInList}) catch @panic("unable to write stdout");
+                // if (jo_basic_info.ActiveProcesses != 0) @panic("child process still running");
+                if (jo_basic_info.ActiveProcesses == 0) break;
+            }
+        }
 
         // some work, supervision, forward debugging etc
     }
