@@ -149,40 +149,36 @@ fn behavior(gpa: std.mem.Allocator) !void {
             @panic("fatal error");
         };
 
-        defer { // wait until terminated
-            var buf_jo_basic_procidlist: [500]u8 = undefined;
-            var jo_basic_info: winsec.JOBOBJECT_BASIC_ACCOUNTING_INFORMATION = std.mem.zeroes(winsec.JOBOBJECT_BASIC_ACCOUNTING_INFORMATION);
-            // I/O completion ports may drop data leading to infinite loop, so use
-            // polling with QueryInformationJobObject
-            while (true) {
-                const jo_basic_procidlist = winsec.QueryInformationJobObject_ProcIdList(
-                    h_jo,
-                    &buf_jo_basic_procidlist,
-                    @intCast(buf_jo_basic_procidlist.len),
-                ) catch {
-                    @panic("broken");
-                };
-
-                winsec.QueryInformationJobObject(
-                    h_jo,
-                    winsec.JobObjectInformationClass.BasicAccountingInformation,
-                    &jo_basic_info,
-                    @sizeOf(@TypeOf(jo_basic_info)),
-                    null,
-                ) catch {
-                    @panic("broken");
-                };
-
-                std.time.sleep(std.time.ns_per_ms);
-                const stdout_wr = std.io.getStdOut().writer();
-                stdout_wr.print("active processes {d}\n", .{jo_basic_info.ActiveProcesses}) catch @panic("unable to write stdout");
-                stdout_wr.print("jo_basic_procidlist.NumberOfProcessIdsInList: {d}\n", .{jo_basic_procidlist.NumberOfProcessIdsInList}) catch @panic("unable to write stdout");
-                // if (jo_basic_info.ActiveProcesses != 0) @panic("child process still running");
-                if (jo_basic_info.ActiveProcesses == 0) break;
-            }
-        }
-
         // some work, supervision, forward debugging etc
+    }
+
+    const wait_res = try child.wait(); // alternative: use i/o completion ports
+
+    // I/O completion ports may drop data leading to infinite loop, so use
+    // polling with QueryInformationJobObject
+    while (true) {
+        var buf_jo_basic_procidlist: [500]u8 = std.mem.zeroes([500]u8);
+        var jo_basic_info: winsec.JOBOBJECT_BASIC_ACCOUNTING_INFORMATION = std.mem.zeroes(winsec.JOBOBJECT_BASIC_ACCOUNTING_INFORMATION);
+        const jo_basic_procidlist = winsec.QueryInformationJobObject_ProcIdList(
+            h_jo,
+            &buf_jo_basic_procidlist,
+            @intCast(buf_jo_basic_procidlist.len),
+        ) catch {
+            @panic("broken");
+        };
+
+        winsec.QueryInformationJobObject(
+            h_jo,
+            winsec.JobObjectInformationClass.BasicAccountingInformation,
+            &jo_basic_info,
+            @sizeOf(@TypeOf(jo_basic_info)),
+            null,
+        ) catch {
+            @panic("broken");
+        };
+
+        if (jo_basic_info.ActiveProcesses == 0 and jo_basic_procidlist.NumberOfProcessIdsInList) break;
+        std.time.sleep(1_000 * std.time.ns_per_ms);
     }
 
     // no surviving processes must exist (bindings exhaustive work, so defer it)
@@ -190,7 +186,6 @@ fn behavior(gpa: std.mem.Allocator) !void {
     const has_prefix = hasAnyProcessPrefix(L("evildescendent"));
     if (has_prefix) return error.ProcessHasUnwantedPrefix;
 
-    const wait_res = try child.wait();
     switch (wait_res) {
         .Exited => |code| {
             if (code != expected_exit_code) {
