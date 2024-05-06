@@ -130,6 +130,23 @@ fn behavior(gpa: std.mem.Allocator) !void {
         null,
     );
 
+    const ioport_h = try std.os.windows.CreateIoCompletionPort(
+        std.os.windows.INVALID_HANDLE_VALUE,
+        null,
+        0,
+        1,
+    );
+    var completion_port = winsec.JOBOBJECT_ASSOCIATE_COMPLETION_PORT{
+        .CompletionKey = h_jo,
+        .CompletionPort = ioport_h,
+    };
+    try winsec.SetInformationJobObject(
+        h_jo,
+        winsec.JobObjectInformationClass.AssociateCompletionPortInformation,
+        &completion_port,
+        @sizeOf(@TypeOf(completion_port)),
+    );
+
     var child = childsec.ChildProcess.init(&.{ child_path, "6" }, gpa);
     child.stdin_behavior = .Close;
     child.stdout_behavior = .Inherit;
@@ -144,7 +161,9 @@ fn behavior(gpa: std.mem.Allocator) !void {
         try child.spawn();
         const isproc_injob = try winsec.IsProcessInJob(child.id, h_jo);
         try std.testing.expectEqual(isproc_injob, true);
-        // kill descendant processes in all cases
+        // Kill all descendant processes.
+        // This requires io-completion activity to be executed on the job object or
+        // the process will hang.
         defer winsec.TerminateJobObject(h_jo, expected_exit_code) catch {
             @panic("fatal error");
         };
@@ -152,10 +171,23 @@ fn behavior(gpa: std.mem.Allocator) !void {
         // some work, supervision, forward debugging etc
     }
 
-    const wait_res = try child.wait(); // alternative: use i/o completion ports
+    var completion_code: u32 = undefined;
+    var overlapped: ?*std.os.windows.OVERLAPPED = undefined;
+    var completion_key: usize = undefined;
 
-    // I/O completion ports may drop data leading to infinite loop, so use
-    // polling with QueryInformationJobObject
+    while (std.os.windows.GetQueuedCompletionStatus(
+        ioport_h,
+        &completion_code,
+        &completion_key,
+        &overlapped,
+        std.os.windows.INFINITE,
+    ) == std.os.windows.GetQueuedCompletionStatusResult.Normal and !(completion_key == @intFromPtr(h_jo) and
+        completion_code == @intFromEnum(winsec.JobObjectMsg.ActiveProcessZero)))
+    {}
+
+    const wait_res = try child.wait();
+
+    // validate status with QueryInformationJobObject_ProcIdList,
     while (true) {
         var buf_jo_basic_procidlist: [500]u8 = std.mem.zeroes([500]u8);
         var jo_basic_info: winsec.JOBOBJECT_BASIC_ACCOUNTING_INFORMATION = std.mem.zeroes(winsec.JOBOBJECT_BASIC_ACCOUNTING_INFORMATION);

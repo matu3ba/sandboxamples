@@ -597,6 +597,25 @@ pub const JOBOBJECT_BASIC_LIMIT_INFORMATION = extern struct {
     SchedulingClass: DWORD,
 };
 
+pub const JOBOBJECT_ASSOCIATE_COMPLETION_PORT = extern struct {
+    CompletionKey: PVOID,
+    CompletionPort: HANDLE,
+};
+
+pub const JobObjectMsg = enum(u32) {
+    EndOfJobTime = 1,
+    EndOfProcessTime = 2,
+    ActiveProcessLimit = 3,
+    ActiveProcessZero = 4,
+    NewProcess = 6,
+    ExitProcess = 7,
+    AbnormalExitProcess = 8,
+    ProcessMemoryLimit = 9,
+    JobMemoryLimit = 10,
+    NotificationLimit = 11,
+    JobCycleTimeLimit = 12,
+};
+
 pub const IO_COUNTERS = extern struct {
     ReadOperationCount: ULONGLONG,
     WriteOperationCount: ULONGLONG,

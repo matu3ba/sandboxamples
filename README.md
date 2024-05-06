@@ -29,6 +29,7 @@ Windows
     - [x] `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE, JOBOBJECT_EXTENDED_LIMIT_INFORMATION, SetInformationJobObject`
     - [x] Enumerate process names on system
     - `test/win/main_job_api.zig`
+    - [x] usage of I/O completion port from https://devblogs.microsoft.com/oldnewthing/20130405-00/?p=4743
 - [ ] file system sandboxing by user account (might need to remove and readd account)
       - ignore for now and always use explicit paths for PATH and alike.
       - use ntdll calls eventually, because we already have those in Zig libstd
