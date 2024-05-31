@@ -21,30 +21,8 @@ const winsec = sec.os.win;
 const childsec = sec.child;
 const ossec = sec.os;
 
-// pub const WINBOOL = c_int;
-// pub const LPVOID = ?*anyopaque;
 pub const PSID = ?*opaque {};
 pub const PSECURITY_DESCRIPTOR = ?*anyopaque;
-// pub const ACL = extern struct {
-//     AclRevision: winsec.BYTE,
-//     Sbz1: winsec.BYTE,
-//     AclSize: winsec.WORD,
-//     AceCount: winsec.WORD,
-//     Sbz2: winsec.WORD,
-// };
-
-// pub extern "advapi32" fn GetSecurityInfo(
-//     handle: ?winsec.HANDLE,
-//     ObjectType: winsec.SE_OBJECT_TYPE,
-//     SecurityInfo: winsec.DWORD,
-//     ppsidOwner: ?*PSID,
-//     ppsidGroup: ?*PSID,
-//     ppDacl: ?*?*ACL,
-//     ppSacl: ?*?*ACL,
-//     ppSecurityDescriptor: ?*PSECURITY_DESCRIPTOR
-//     ) winsec.DWORD;
-
-pub extern fn GetLastError() winsec.DWORD;
 
 pub fn main() !void {
     var gpa_state = std.heap.GeneralPurposeAllocator(.{ .safety = true }){};
@@ -106,6 +84,19 @@ fn behavior(gpa: std.mem.Allocator) !void {
 
     std.debug.print("sec_info: {}\n", .{sec_info});
 
+    // TODO finish this based on
+    // https://www.codeproject.com/Articles/5341307/Win32-Security-Retrieving-Privileges-and-Groups-fo
+    // LookupAccountSid
+    // bRtnBool = LookupAccountSidW(
+    //                   NULL,           // local computer
+    //                   pSidOwner,
+    //                   AcctName,
+    //                   (LPDWORD)&dwAcctName,
+    //                   DomainName,
+    //                   (LPDWORD)&dwDomainName,
+    //                   &eUse);
+
+    // print account name
     // var account_buf: [100]
 
     // GetExplicitEntriesFromAcl
