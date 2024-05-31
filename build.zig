@@ -138,7 +138,7 @@ pub fn build(b: *std.Build) void {
             .target = target,
         });
         main_c.addCSourceFile(.{
-            .file = .{ .path = "test/win/main_sec_info.c" },
+            .file = b.path("test/win/main_sec_info.c"),
             .flags = &.{},
         });
         main_c.linkLibC();
